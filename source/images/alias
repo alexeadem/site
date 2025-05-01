@@ -1,0 +1,5 @@
+#!/bin/bash
+#REPO=levitas
+REPO=eadem
+alias qbo="docker run --rm --name qbo-cli -e CLI_LOG=$CLI_LOG -e QBO_HOST=$QBO_HOST -e QBO_PORT=$QBO_PORT -e QBO_UID=$QBO_UID -e QBO_AUX=$QBO_AUX --network host -i -v ~/.qbo:/tmp/qbo $REPO/cli:latest cli"
+

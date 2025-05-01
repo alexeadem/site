@@ -1,0 +1,7 @@
+title: MinIO on QBO - Deploying High-Performance Object Storage
+description: In this demo, we will walk through setting up a distributed MinIO deployment on QBO, configuring external access, and testing data uploads using `mc` (MinIO Client).
+link: /demos/minio/
+preview: /demos/minio/
+tags:
+  - minio
+  - storage

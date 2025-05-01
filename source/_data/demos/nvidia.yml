@@ -1,0 +1,10 @@
+title: NVIDIA GPU Operator
+description: Deploy NVIDIA GPU Operator on QBO Kubernetes Engine (QKE)
+link: /demos/nvidia/
+preview: /demos/nvidia/
+tags:
+  - ai
+  - ml
+  - nvidia
+  - QKE
+  - kubernetes

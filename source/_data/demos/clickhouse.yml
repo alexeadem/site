@@ -1,0 +1,7 @@
+title: Supercharge ClickHouse Deployment on QBO
+description: QBO is a cutting-edge platform that transforms bare-metal servers into powerful cloud solutions using containerized technology instead of traditional virtualization. This approach ensures metal performance, making it ideal for workloads like AI, databases, and real-time applications. This blog walks you through deploying **ClickHouse**, a columnar database, on QBO with optimal performance.
+link: /demos/clickhouse/
+preview: /demos/clickhouse/
+tags:
+  - clickhouse
+  - databases

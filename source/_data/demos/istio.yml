@@ -1,0 +1,9 @@
+title: Istio Book Store
+description: Deploy a sample application composed of four separate microservices used to demonstrate various Istio features on QBO Kubernetes Engine (QKE)
+link: /demos/istio/
+preview: /demos/istio/
+tags:
+  - istio
+  - mesh
+  - QKE
+  - kubernetes

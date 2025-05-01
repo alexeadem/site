@@ -1,0 +1,7 @@
+title: Simplified Redpanda Deployment on QBO for High-Performance Streaming
+description: QBO's innovative container-based approach ensures that workloads like **Redpanda**, a streaming data platform, run with metal performance. This blog demonstrates how to deploy Redpanda on QBO while leveraging its containerized Kubernetes ecosystem.
+link: /demos/redpanda/
+preview: /demos/redpanda/
+tags:
+  - redpanda
+  - databases

@@ -1,0 +1,12 @@
+title: Unlocking AI & ML Metal Performance with QBO Kubernetes Engine (QKE) Part I
+subtitle: Deploying Nvidia GPU Operator
+description:  
+author: ALEX DIAZ
+date: FEB 3, 2024
+link: /blogs/nvidia_kubeflow_1/
+preview: /blogs/nvidia_kubeflow_1/
+video: https://www.youtube.com/embed/nl7sWLsuDOI?si=Cha3th9x1rPduEt5
+tags:
+  - nvidia
+  - performance
+  - containers

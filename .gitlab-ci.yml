@@ -1,0 +1,57 @@
+stages:
+  - deploy
+  - test
+  - release
+
+variables:
+  GIT_TAG_PREFIX: "v"
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "dev"  # Run pipeline only on master or dev
+
+before_script:
+  - apt-get update && apt-get install -y git nodejs npm curl
+  - git fetch --tags
+  - npm install hexo
+  - RELEASE_CLI_VERSION=v0.21.0
+  - echo "RELEASE_CLI_VERSION = $RELEASE_CLI_VERSION"
+  - curl -L --output /usr/local/bin/release-cli "https://gitlab.com/gitlab-org/release-cli/-/releases/${RELEASE_CLI_VERSION}/downloads/bin/release-cli-linux-amd64"
+  - chmod +x /usr/local/bin/release-cli
+
+pages:
+  stage: deploy
+  tags:
+    - qbo
+    - shared
+  script:
+    - ./qbo build web -d
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "master"  # Run only on dev and master
+  artifacts:
+    paths:
+      - public
+
+release:
+  stage: release
+  tags:
+    - qbo
+  image: debian:12
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"  # Run only in master
+      when: manual  # Makes the release job appear as a manual action
+  script:
+    - |
+      COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+      if [[ "$COMMIT_MESSAGE" =~ \[major\] ]]; then
+        ./qbo release major
+      elif [[ "$COMMIT_MESSAGE" =~ \[minor\] ]]; then
+        ./qbo release minor
+      elif [[ "$COMMIT_MESSAGE" =~ \[patch\] ]]; then
+        ./qbo release patch
+      elif [[ "$COMMIT_MESSAGE" =~ \[rc\] ]]; then
+        ./qbo release rc
+      else
+        echo "No version increment found in commit message."
+        exit 0
+      fi

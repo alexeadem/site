@@ -1,0 +1,42 @@
+title: QBO
+subtitle: "A fast, simple & powerful blog framework powered by Node.js."
+description: "QBO is a fast, simple & powerful blog framework powered by Node.js."
+author: QBO
+language: en
+timezone: UTC
+
+url: https://www.qbo.io
+root: /
+permalink: news/:year/:month/:day/:title/
+archive_dir: news
+code_dir: downloads/code
+new_post_name: :year-:month-:day-:title.md # File name of new posts
+post_asset_folder: true
+per_page: 0
+pretty_urls:
+  trailing_index: false
+  trailing_html: false
+
+theme: navy
+
+highlight:
+  enable: true
+  line_number: false
+
+# disqus_shortname: disqus_zRtxeMCknB
+google_analytics: G-L2EH21P134
+fb_admins: 100000247608790
+algolia:
+  en:
+    # qbo
+    # api_key: bbe81ac1c2e13720b761072d2a6dc19e
+    # index_name: qbo
+    application_id: 22V4SOJ92L
+    # hexo
+    api_key: dc1de3f4577eb710e8376da031402195
+    index_name: qbo
+twitter: qbo_cloud
+youtube: qbo-cloud
+github: alexeadem/qbo-ce
+linkedin: company/qbo-cloud
+slack : archives/C05733LJ22Z

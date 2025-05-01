@@ -1,0 +1,363 @@
+<!-- Scripts -->
+<!-- Cookie -->
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+<!-- build:js build/js/main.js -->
+{{ js('js/lang_select') }}
+{{ js('js/mobile_nav') }}
+<!-- endbuild -->
+{% if page.layout === 'plugins' %}
+<!-- Plugin search -->
+<script src="https://cdn.jsdelivr.net/npm/lunr@2.3.9/lunr.min.js"></script>
+<!-- Lazy load -->
+<script async src="https://cdn.jsdelivr.net/lazysizes/3.0.0/lazysizes.min.js"></script>
+<!-- build:js build/js/plugins.js -->
+{{ js('js/plugins') }}
+<!-- endbuild -->
+{% endif %}
+<!-- Algolia -->
+{% if config.algolia[page.lang] %}
+
+<!-- docsearch -->
+<!-- 3 -->
+{# search-input-icon #}
+<script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3"></script>
+<script type="text/javascript">
+  document.getElementById('search-input-wrap').classList.add('on');
+  {# console.log('{{ config.algolia[page.lang].application_id }}');
+  console.log('{{ config.algolia[page.lang].api_key }}');
+  console.log('{{ config.algolia[page.lang].index_name }}'); #}
+  docsearch({
+    appId:  '{{ config.algolia[page.lang].application_id }}',
+    apiKey: '{{ config.algolia[page.lang].api_key }}',
+    indexName: '{{ config.algolia[page.lang].index_name }}',
+    container: '#search-input-wrap',
+    debug: false 
+  });
+  docsearch({
+    appId:  '{{ config.algolia[page.lang].application_id }}',
+    apiKey: '{{ config.algolia[page.lang].api_key }}',
+    indexName: '{{ config.algolia[page.lang].index_name }}',
+    container: '#search-input-icon',
+    debug: false 
+  });
+</script>
+<!-- 3 -->
+<!-- 2 -->
+{# <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@algolia/algoliasearch-netlify-frontend@1/dist/algoliasearchNetlify.js"></script>
+<script type="text/javascript">
+  document.getElementById('search-input-wrap').classList.add('on');
+  algoliasearchNetlify({
+    appId: '7N8OHNPJCS',
+    apiKey: '9ff667588801cf7b89e2f037ca27b18b',
+    siteId: 'b13e4405-737b-4093-8bb9-539879da1716',
+    branch: 'main',
+    selector: '#search-input-wrap',
+  });
+</script> #}
+<!-- 2 -->
+<!-- 1 -->
+{# <script type="text/javascript" src="https://cdn.jsdelivr.net/docsearch.js/1/docsearch.min.js"></script>
+  <script type="text/javascript">
+    document.getElementById('search-input-wrap').classList.add('on');
+    console.log('{{ config.algolia[page.lang].application_id }}');
+    console.log('{{ config.algolia[page.lang].api_key }}');
+    console.log('{{ config.algolia[page.lang].index_name }}');
+    docsearch({
+    appId:  '{{ config.algolia[page.lang].application_id }}', 
+    apiKey: '{{ config.algolia[page.lang].api_key }}',
+    indexName: '{{ config.algolia[page.lang].index_name }}',
+    inputSelector: '#search-input'
+    });
+</script> #}
+<!-- 1 -->
+<script>
+
+  /* randon names */
+const left = [
+    "admiring",
+    "adoring",
+    "affectionate",
+    "agitated",
+    "amazing",
+    "angry",
+    "competent",
+    "condescending",
+    "confident",
+    "cranky",
+    "crazy",
+    "dazzling",
+    "determined",
+    "distracted",
+    "dreamy",
+    "flamboyant",
+    "focused",
+    "friendly",
+    "frosty",
+    "funny",
+    "gallant",
+    "gifted",
+    "goofy",
+    "gracious",
+    "great",
+    "happy",
+    "hardcore",
+    "heuristic",
+    "hopeful",
+    "hungry",
+    "infallible",
+    "inspiring",
+    "intelligent",
+    "interesting",
+    "jolly",
+    "nervous",
+    "nice",
+    "nifty",
+    "nostalgic",
+    "objective",
+    "optimistic",
+    "peaceful",
+    "pedantic",
+    "pensive",
+    "practical",
+    "priceless",
+    "quirky",
+    "quizzical",
+    "recursing",
+    "relaxed",
+    "reverent",
+    "romantic",
+    "sad",
+    "serene",
+    "sharp",
+    "silly",
+    "unruffled",
+    "upbeat",
+    "vibrant",
+    "vigilant",
+    "vigorous",
+    "wizardly",
+    "wonderful",
+    "xenodochial",
+    "youthful",
+    "zealous",
+    "zen",
+  ];
+
+const right = [
+    "agnesi",
+    "albattani",
+    "allen",
+    "almeida",
+    "antonelli",
+    "archimedes",
+    "ardinghelli",
+    "aryabhata",
+    "austin",
+    "babbage",
+    "banach",
+    "banzai",
+    "bardeen",
+    "bartik",
+    "bassi",
+    "booth",
+    "borg",
+    "bose",
+    "bouman",
+    "boyd",
+    "brahmagupta",
+    "brattain",
+    "brown",
+    "buck",
+    "burnell",
+    "cannon",
+    "carson",
+    "cartwright",
+    "carver",
+    "cerf",
+    "chandrasekhar",
+    "chaplygin",
+    "chatelet",
+    "chatterjee",
+    "chaum",
+    "chebyshev",
+    "clarke",
+    "cohen",
+    "colden",
+    "cori",
+    "cray",
+    "curran",
+    "curie",
+    "darwin",
+    "davinci",
+    "dewdney",
+    "dhawan",
+    "elion",
+    "ellis",
+    "engelbart",
+    "euclid",
+    "euler",
+    "faraday",
+    "feistel",
+    "fermat",
+    "fermi",
+    "feynman",
+    "franklin",
+    "gagarin",
+    "galileo",
+    "galois",
+    "ganguly",
+    "gates",
+    "gauss",
+    "germain",
+    "goldberg",
+    "goldstine",
+    "goldwasser",
+    "golick",
+    "goodall",
+    "gould",
+    "hodgkin",
+    "hofstadter",
+    "hoover",
+    "hopper",
+    "hugle",
+    "hypatia",
+    "ishizaka",
+    "jackson",
+    "jang",
+    "jemison",
+    "jennings",
+    "jepsen",
+    "johnson",
+    "joliot",
+    "merkle",
+    "mestorf",
+    "mirzakhani",
+    "montalcini",
+    "moore",
+    "morse",
+    "murdock",
+    "moser",
+    "napier",
+    "nash",
+    "neumann",
+    "newton",
+    "nightingale",
+    "nobel",
+    "noether",
+    "northcutt",
+    "noyce",
+    "ride",
+    "ritchie",
+    "vaughan",
+    "villani",
+    "visvesvaraya",
+    "volhard",
+    "wescoff",
+    "wilbur",
+    "wiles",
+    "williams",
+    "williamson",
+    "wilson",
+    "wing",
+    "wozniak",
+    "wright",
+    "wu",
+    "yalow",
+    "yonath",
+    "zhukovsky"
+  ];
+
+  function getRandomName() {
+    let name;
+
+    do {
+        name = left[Math.floor(Math.random() * left.length)] + "_" + right[Math.floor(Math.random() * right.length)]
+    } while (name === "boring_wozniak")
+
+    return name;
+}
+
+  const commands = [
+    'qbo add cluster ',
+    'qbo add instance ',
+    'qbo add user qbot@cloud.qbo.io',
+    'qbo add network 54.239.98.0/24',
+    'qbo get ipvs -A',
+    'qbo get users -A',
+    'qbo version | jq'
+  ];
+
+  const outputDiv = document.getElementById('banner-start-command');
+
+  function typeText(text, callback) {
+    const typingSpeed = 50; // Speed of typing in milliseconds
+    let index = 0;
+    const intervalId = setInterval(() => {
+      outputDiv.textContent += text[index];
+      index++;
+      if (index === text.length) {
+        clearInterval(intervalId);
+        if (callback) callback();
+      }
+
+      // Scroll to the end of the container
+      outputDiv.scrollLeft = outputDiv.scrollWidth;
+    }, typingSpeed);
+  }
+
+  function typeCommands(commands, index = 0) {
+    if (index < commands.length) {
+      // Clear the div before typing the next command
+      if(outputDiv == null)
+        return
+
+      outputDiv.textContent = '';
+
+      // Type the current command
+      let name = ""
+      if(index == 0) 
+        name = getRandomName() + " -i hub.docker.com/kindest/node:v1.30.2";
+
+      if(index == 1) 
+        name = getRandomName() + " -i registry.qbo.io/qbo/cloud/instance:plasma";
+
+      typeText(commands[index] + name +'\n', () => {
+        // After typing the current command, type the next one
+        setTimeout(() => {
+          typeCommands(commands, index + 1);
+        }, 2000); // Optional delay before starting the next command
+      });
+    }
+  }
+
+  // Start typing commands
+  typeCommands(commands);
+</script>
+<!-- docsearch -->
+
+<!-- algoliasearch -->
+{# <script src="//cdn.jsdelivr.net/algoliasearch/3/algoliasearch.min.js"></script>
+<script>
+document.getElementById('search-input-wrap').classList.add('on');
+
+const appID = '{{ config.algolia[page.lang].application_id }}';
+const apiKey = '{{ config.algolia[page.lang].api_key }}';
+
+const client = algoliasearch(appID, apiKey);
+
+// Create a new index and add a reindexcord
+const index = client.initIndex("qbo");
+
+indexhits
+  .search('qbo')
+  .then(({ hits }) => {
+    console.log(JSON.stringify(hits));
+  })
+  .catch(err => {
+    console.log(err);
+  });
+
+</script> #}
+<!-- algoliasearch -->
+
+{% endif %}

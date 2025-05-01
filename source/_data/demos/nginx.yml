@@ -1,0 +1,9 @@
+title: NGINX Ingress Controller Coffee & Tea
+description: Deploy a Coffe & Tea app with NGINX Ingress Controller on QBO Kubernetes Engine (QKE) 
+link: /demos/nginx/
+preview: /demos/nginx/
+tags:
+  - nginx
+  - ingress
+  - QKE
+  - Kubernetes

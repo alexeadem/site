@@ -1,0 +1,8 @@
+title: Using Load Balancers in QBO - A Step-by-Step Guide
+description: QBO, with its containerized architecture and metal performance, simplifies networking and service management in Kubernetes. One of its standout features is the management of kernel-level load balancing using IPVS (IP Virtual Server), providing a robust and efficient way to handle network traffic.
+link: /demos/lb/
+preview: /demos/ln/
+tags:
+  - qbo
+  - load balancers
+  - ipvs

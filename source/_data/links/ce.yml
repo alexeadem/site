@@ -1,0 +1,7 @@
+title: QBO Community Edition (QBO CE)
+description: Create, deploy, and manage Kubernetes resources on your local machine with QBO CE.
+link: https://github.com/alexeadem/qbo-ce
+preview: https://github.com/alexeadem/qbo-ce
+tags:
+  - repository
+  - ce

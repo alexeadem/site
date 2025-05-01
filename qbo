@@ -1,0 +1,257 @@
+#!/bin/bash
+
+set -e
+
+color=75
+BIN=web
+DEBUG=0
+CLEAN=0
+MESSAGE=""
+LOCAL=0
+PART="patch"
+
+HEXO_BIN=./node_modules/hexo/bin/hexo
+
+
+usage() {
+    echo -e "\033[1;38;5;${color}m>>>\033[0m qbo \033[1;38;5;${color}m{ ship }\033[0m $BIN                                -- ship website to Netlify"
+    echo -e "    -m  \"commit message\"                            -- commit message"
+    echo -e "\033[1;38;5;${color}m>>>\033[0m qbo \033[1;38;5;${color}m{ build }\033[0m $BIN                               -- build website with hexo"
+    echo -e "    -c                                              -- build clean"
+    echo -e "    -d                                              -- build debug"
+    echo -e "\033[1;38;5;${color}m>>>\033[0m qbo \033[1;38;5;${color}mrelease\033[0m   { major | minor | patch | rc }    -- prod release"
+
+    exit 1
+}
+
+function build() {
+    if [ "$CLEAN" = 1 ]; then
+        $HEXO_BIN clean
+    fi
+
+    if [ "$DEBUG" = 1 ]; then
+        $HEXO_BIN generate --debug
+    else
+        $HEXO_BIN generate
+    fi
+    
+}
+
+function ship() {
+
+    $HEXO_BIN clean
+    $HEXO_BIN generate --debug
+
+    if [ ! $(whoami) = "gitlab-runner" ]; then
+        echo "$(git rev-parse --abbrev-ref HEAD)"
+        git add .
+        git commit -m "$MESSAGE"
+        git push
+        exit 0
+    fi
+
+    cd public
+    git init
+    git remote add origin ssh://git@public/alexeadem/public.git
+    
+    git add .
+    git commit -m "$MESSAGE"
+    git branch -M main
+    git push -u origin main -f
+
+}
+
+function release() {
+
+    # To increment the major: [major]
+    # To increment the minor: [minor]
+    # To increment the patch: [patch]
+    # To increment the rc: [rc]
+
+    # Variables
+    GIT_TAG_PREFIX="v"
+    LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+
+    # Default increment type
+    INCREMENT_TYPE="$PART"
+
+    # Determine the new tag
+    if [ -z "$LATEST_TAG" ]; then
+        # If no tags are found, start with v0.0.1
+        NEW_TAG="${GIT_TAG_PREFIX}0.0.1"
+    else
+        BASE_VERSION=${LATEST_TAG#"$GIT_TAG_PREFIX"}
+        IFS='.' read -r -a VERSION_PARTS <<< "$BASE_VERSION"
+
+        MAJOR=${VERSION_PARTS[0]}
+        MINOR=${VERSION_PARTS[1]}
+        PATCH=$(echo ${VERSION_PARTS[2]} | sed 's/-rc.*$//')
+
+        RC_NUMBER=${LATEST_TAG#*-rc}
+
+        if [ "$RC_NUMBER" = "$LATEST_TAG" ]; then
+        RC_NUMBER=0
+        fi
+
+        case "$INCREMENT_TYPE" in
+        major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            RC=""
+            ;;
+        minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            RC=""
+            ;;
+        patch)
+            PATCH=$((PATCH + 1))
+            RC=""
+            ;;
+        rc)
+            # Increment RC version
+            RC_NUMBER=$((RC_NUMBER + 1))
+            RC="-rc$RC_NUMBER"
+            ;;
+        *)
+            echo "Invalid increment type. Use 'major', 'minor', 'patch', or 'rc'."
+            exit 1
+            ;;
+        esac
+
+        NEW_TAG="${GIT_TAG_PREFIX}${MAJOR}.${MINOR}.${PATCH}${RC}"
+
+    fi
+
+    # Output the new tag
+    echo "NEW_TAG = $NEW_TAG"
+
+    release-cli create --description "[Release Notes](https://qbo-cloud.netlify.app/news/$(date -u +%Y)/$(date -u +%m)/$(date -u +%d)/website-$(echo $NEW_TAG | sed 's/v//;s/\./-/g')-released)" --tag-name "$NEW_TAG" --ref "$CI_COMMIT_SHA"
+    echo "running release_job for $TAG"
+    echo "CI_REGISTRY_IMAGE = $CI_REGISTRY_IMAGE"
+    echo "CI_REGISTRY_USER = $CI_REGISTRY_USER"
+    echo "CI_COMMIT_SHA = $CI_COMMIT_SHA"
+    echo "CI_COMMIT_BRANCH = $CI_COMMIT_BRANCH"
+    echo "CI_DEFAULT_BRANCH = $CI_DEFAULT_BRANCH"
+
+    $HEXO_BIN clean
+    $HEXO_BIN generate --debug
+
+    git config --global user.email "ci-bot@qbo.io"
+    git config --global user.name "GitLab CI Bot"
+    git config --global init.defaultBranch main
+
+    echo "USER = $(whoami)"
+
+    cd public
+    git init
+    git remote add origin https://oauth2:${GITHUB_TOKEN}@github.com/alexeadem/public.git
+    git add .
+    git commit -m "$NEW_TAG"
+    git branch -M main
+    git push -u origin main -f
+
+    exit 0
+
+}
+
+if [ -z "$1" ]; then
+    usage
+fi
+
+
+if [ $1 = "build" ]; then
+    echo -e "\033[1;38;5;${color}m>>>\033[0m $@"
+    shift $((OPTIND))
+
+    if [ -z $1 ]; then
+        usage
+    fi
+
+    if [ $1 = "web" ]; then
+        BIN="web";
+    else
+        usage
+    fi
+
+    shift $((OPTIND))
+    while getopts "cd" opt; do
+        case ${opt} in
+            c ) # build type
+                CLEAN=1
+            ;;
+            d) # build type
+                DEBUG=1;
+                echo -e "\033[1;38;5;${color}m>>>\033[0m DEBUG=$DEBUG"
+            ;;
+            \? )
+            echo "Invalid option: $OPTARG" 1>&2
+            usage
+            ;;
+        esac
+    done 
+    build
+elif [ $1 = "release" ]; then
+    echo -e "\033[1;38;5;${color}m>>>\033[0m $@"
+    shift $((OPTIND))
+    if [ -z $1 ]; then
+        usage
+    fi
+    if [ $1 = "major" ]; then
+        PART="$1";
+    elif [ $1 = "minor" ]; then
+        PART="$1";
+    elif [ $1 = "patch" ]; then
+        PART="$1";
+    elif [ $1 = "rc" ]; then
+        PART="$1";
+    else
+        usage
+    fi
+    shift $((OPTIND))
+    release
+elif [ $1 = "ship" ]; then
+    echo -e "\033[1;38;5;${color}m>>>\033[0m $@"
+    shift $((OPTIND))
+    if [ -z $1 ]; then
+        usage
+    fi
+    if [ $1 = "web" ]; then
+        BIN="web";
+    else
+        usage
+    fi
+    shift $((OPTIND))
+    while getopts "m:" opt; do
+        case ${opt} in
+            # l ) 
+            #     LOCAL=1;
+            #     echo -e "\033[1;38;5;${color}m>>>\033[0m LOCAL=$LOCAL"
+            # ;;
+            m ) 
+                MESSAGE=$OPTARG;
+                echo -e "\033[1;38;5;${color}m>>>\033[0m MESSAGE=$MESSAGE"
+            ;;
+            \? )
+            echo "Invalid option: $OPTARG" 1>&2
+            usage
+            ;;
+        esac
+    done
+
+    if [ -z "$MESSAGE" ]; then
+        usage
+    fi
+    # echo "test"
+    # shift $((OPTIND))
+    ship
+    
+else
+    usage
+
+    exit $?
+fi
+
+exit 0
+

@@ -1,0 +1,29 @@
+<li class="plugin on" id="{{ plugin.name }}">
+  <div class="plugin-screenshot">
+    <noscript>
+      <img src="{{ url_for('links/images/' + plugin.name + '.svg') }}" class="plugin-screenshot-img-svg" alt="{{ plugin.name }}">
+    </noscript>
+    <img data-src="{{ url_for('links/images/' + plugin.name + '.svg') }}" data-sizes="auto" class="plugin-screenshot-img-svg lazyload" alt="{{ plugin.name }}" data-zoom-src="{{ url_for('links/images/' + plugin.name + '.svg') }}" data-zoomable>
+    {% if plugin.preview %}
+      <div class="plugin-screenshot-mask"><i class="fa fa-eye"></i></div>
+    {% endif %}
+  </div>
+
+  {% if "{{ local_link('plugin.link') }}" %}
+  <a href="{{ plugin.link }}" class="plugin-name">{{ plugin.title }} <i class="fa fa-external-link"></i></a>
+  {% else %}
+  <a href="{{ plugin.link }}" class="plugin-name" target="_blank">{{ plugin.title }} <i class="fa fa-external-link"></i></a>
+  {% endif %}
+
+  {# {% if plugin.preview %}
+    <div class="plugin-preview-wrap">
+      <a href="{{ plugin.preview }}" class="plugin-preview-link" target="_blank"> Visit preview site <i class="fa fa-external-link"></i></a>
+    <div>
+  {% endif %} #}
+  <p class="plugin-desc">{{ plugin.description }}</p>
+  <div class="plugin-tag-list">
+    {% for tag in plugin.tags %}
+      <a href="#{{ tag }}" class="plugin-tag">{{ tag }}</a>
+    {% endfor %}
+  </div>
+</li>

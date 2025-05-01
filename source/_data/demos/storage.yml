@@ -1,0 +1,8 @@
+title: Persistent Storage
+description: Configure persistent storage for Let’s Encrypt Certs on QBO Kubernetes Engine (QKE)
+link: /demos/storage/
+preview: /demos/storage/
+tags:
+  - storage
+  - kubernetes
+  - QKE

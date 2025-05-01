@@ -1,0 +1,66 @@
+menu:
+  docs: Docs
+  api: API
+  news: News
+  technology: Technology
+  platform: Platform
+  blogs: Blogs
+  demos: Demos
+  about: About
+  resources: Resources
+  solutions: Solutions
+  search: Search
+
+index:
+  get_started: Get started
+  theme_intro_0: Deploy a docker-based plasma web desktop workstation with access to GPU in minutes on QBO. Perfect for CUDA development, VFX, graphic design, gaming and more
+  theme_link_0: Explore Desktop
+  theme_intro_1: Set up the Nvidia GPU Operator in part 1 of "Unlocking AI & ML Metal Performance with QBO Kubernetes Engine (QKE)"
+  theme_link_1: Explore GPU Operator
+  theme_intro_2: Deploy Kubeflow with Nvidia GPU Operator support in part 2 of "Unlocking AI & ML Metal Performance with QBO Kubernetes Engine (QKE)"
+  theme_link_2: Explore Kubeflow
+  theme_intro_3: QBO Kubernetes aligns with the Cloud Native Computing Foundation (CNCF) standards, ensuring adherence to best practices in cloud-native computing. This conformance establishes a solid foundation for interoperability
+  theme_link_3: Explore Conformance
+
+page:
+  contents: Contents
+  back_to_top: Back to Top
+  improve: Improve this doc
+  prev: Prev
+  next: Next
+  last_updated: "Last updated: %s"
+
+sidebar:
+  docs:
+    getting_started: Getting Started
+    overview: Overview
+    installation: Installation
+    ce: Community Edition
+    cloud: Cloud Edition
+    asyncapi: AsyncAPI Specification
+    qce: Container Engine
+    qke: Kubernetes Engine
+    qce_qs: Quick Start
+    qke_qs: Quick Start
+    platform: Platform
+    demos: Demos
+    collection: Collection
+    # qbot: QBOT
+    # nvidia: NVIDIA GPU Operator
+    # kubeflow: Kubeflow
+    # nginx: NGINX Ingress Controller
+    # istio: Istio
+    # storage: Persistent Storage
+    interface: Interface
+    web: WEB
+    cli: CLI
+    api: API
+    conformance: CNCF Conformance
+    sonobuoy: Sonobuoy
+    glossary: Glossary
+    def: Definitions
+  # resources:
+  #   blogs: Blogs
+  #   demos: Demos
+  #   docs: Documentation
+   

@@ -1,0 +1,7 @@
+title: QBO AsyncAPI Specification
+description: QBO stands out as the exclusive AsyncAPI for managing compute instances and Kubernetes clusters using pure container technology with unmatched metal performance.
+link: https://spec.qbo.io/
+preview: https://spec.qbo.io/
+tags:
+  - asyncapi
+  - specification

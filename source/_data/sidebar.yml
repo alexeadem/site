@@ -1,0 +1,30 @@
+docs:
+  getting_started:
+    overview: index.html
+    installation: installation.html
+  api: 
+    ce: ce.html
+    cloud: cloud.html
+    asyncapi: https://spec.qbo.io/
+  qce:
+    qce_qs: qce.html
+  qke:
+    qke_qs: qke.html
+  interface:
+    web: web.html
+    cli: cli.html
+    api: api.html
+  conformance:
+    sonobuoy: sonobuoy.html
+  glossary:
+    def: def.html
+#resources:
+#  docs: 
+#    collection: /docs/
+#  demos: 
+#    collection: /demos/
+#  blogs: 
+#    collection: /blogs/
+  
+  
+

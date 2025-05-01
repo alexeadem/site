@@ -1,0 +1,132 @@
+<header  class="wrapper">
+
+
+  
+  <video id="banner" autoplay muted loop>
+    <source src="/videos/neural.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  <div class="inner">
+    {# <img src="images/qbo_spaceman.svg" height="90px" /> #}
+    <div class="logo"><a data-nosearch="" href="/"><img src="/images/qbo.svg" height="96"></a></div>
+    <h2 id="banner-title">{{ page.title }}</h2>
+    <h3 id="banner-subtitle">{{ page.subtitle }}</h3>
+    <div id="banner-start">
+    <span id="banner-start-command"></span><a id="banner-start-link" href="docs/"><i class="fa fa-arrow-right"></i></a>
+    </div>
+    <div id="banner-share">{{ partial('partial/share') }}</div>
+  </div>
+</header>
+<div id="intro-news-list">
+  <div class="wrapper">
+    <div class="inner">
+      <div id="intro-news-flex">
+        {% set posts = site.posts.sort('-date') %}
+        {% for post in posts.slice('0', '4').toArray() %}
+        <a href="{{ url_for(post.path) }}" class="intro-news-wrap">
+          <div class="intro-news-time">{{ time_tag(post.date) }}</div>
+          <div class="intro-news-title">{{ truncate(post.title, {length: 120, separator: ' '}) }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+<div id="content-wrap">
+  <div class="wrapper">
+    <div class="inner">
+      {{ page.content }}
+      {# <ul id="intro-cmd-wrap">
+        <li class="intro-cmd-item">npm install hexo-cli -g</li>
+        <li class="intro-cmd-item">hexo init blog</li>
+        <li class="intro-cmd-item">cd blog</li>
+        <li class="intro-cmd-item">npm install</li>
+        <li class="intro-cmd-item">hexo server</li>
+      </ul> #}
+      <div id="intro-get-started-wrap">
+        <a href="/links/" id="intro-get-started-link">{{ __('index.get_started') }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="theme-wrap">
+
+  <div class="wrapper">
+    <div class="inner theme-wrapper">
+      <div class="theme-thumbnail">
+        <div class="theme-thumbnail-container">
+          <a href="https://www.cncf.io/training/certification/software-conformance/" target="_blank">
+          <img src="images/certified-kubernetes-color.svg"/>
+          </a>
+        </div>
+      </div>
+      <div class="theme-intro">
+        <div class="theme-intro-container">
+          {# <h2 class="theme-intro-title">{{ site.data.themes.length }} {{ __('menu.themes') }}</h2>
+          <p class="theme-intro-text">{{ __('index.theme_intro') }}</p> #}
+          <h2 class="theme-intro-title">CNCF Conformance</h2>
+          <p class="theme-intro-text">{{ __('index.theme_intro_3') }}</p>
+          <a href="/docs/sonobuoy" id="theme-link">{{ __('index.theme_link_3') }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrapper">
+    <div class="inner theme-wrapper">
+      <div class="theme-thumbnail">
+        <div class="theme-thumbnail-container">
+          <video width="100%" controls poster="/images/plasma.gif">
+            <source
+            src="/videos/plasma.mp4"
+            type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="theme-intro">
+        <div class="theme-intro-container">
+          {# <h2 class="theme-intro-title">{{ site.data.themes.length }} {{ __('menu.themes') }}</h2>
+          <p class="theme-intro-text">{{ __('index.theme_intro') }}</p> #}
+          <h2 class="theme-intro-title">QBO + Plasma Web Desktop</h2>
+          <p class="theme-intro-text">{{ __('index.theme_intro_0') }}</p>
+          <a href="https://github.com/alexeadem/plasma" id="theme-link">{{ __('index.theme_link_0') }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="wrapper">
+    <div class="inner theme-wrapper">
+      <div class="theme-thumbnail">
+        <div class="video-wrapper">
+          <iframe width="100%" src="https://www.youtube.com/embed/nl7sWLsuDOI?si=Cha3th9x1rPduEt5" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </div>
+      <div class="theme-intro">
+        <div class="theme-intro-container">
+          <h2 class="theme-intro-title">QBO + NVIDIA GPU Operator</h2>
+          <p class="theme-intro-text">{{ __('index.theme_intro_1') }}</p>
+          <a href="/blogs/nvidia_kubeflow_1" id="theme-link">{{ __('index.theme_link_1') }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrapper">
+    <div class="inner theme-wrapper">
+      <div class="theme-thumbnail">
+        <div class="video-wrapper">
+        <iframe width="100%" src="https://www.youtube.com/embed/O9xD3dLukf8?si=yT53_F7aqOgzYvaI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </div>
+      <div class="theme-intro">
+        <div class="theme-intro-container">
+          <h2 class="theme-intro-title">QBO + Kubeflow</h2>
+          <p class="theme-intro-text">{{ __('index.theme_intro_2') }}</p>
+          <a href="/blogs/nvidia_kubeflow_2" id="theme-link">{{ __('index.theme_link_2') }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,216 @@
+#!/bin/bash
+
+#set -e
+COREDIR=/tmp/qbo
+
+COLOR=75
+
+
+
+
+color() {
+	local codes=()
+	if [ "$1" = 'bold' ]; then
+		codes=("${codes[@]}" '1')
+		shift
+	fi
+	if [ "$#" -gt 0 ]; then
+		local code=
+		case "$1" in
+			# see https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+			black) code=30 ;;
+			red) code=31 ;;
+			green) code=32 ;;
+			yellow) code=33 ;;
+			blue) code=34 ;;
+			magenta) code=35 ;;
+			cyan) code=36 ;;
+			white) code=37 ;;
+		esac
+		if [ "$code" ]; then
+			codes=("${codes[@]}" "$code")
+		fi
+	fi
+	local IFS=';'
+	echo -en '\033['"${codes[*]}"'m'
+}
+
+wrap_color() {
+	text="$1"
+	shift
+	color "$@"
+	echo -n "$text"
+	color reset
+	echo
+}
+
+wrap_good() {
+	echo "$(wrap_color "$1" white): $(wrap_color "$2" green)"
+}
+
+wrap_bad() {
+	echo "$(wrap_color "$1" bold): $(wrap_color "$2" bold red)"
+}
+
+wrap_warning() {
+    echo "$(wrap_color "$1" bold): $(wrap_color "$2" bold yellow)"
+}
+
+core_limit() {
+    ulimit_output=$(ulimit -a | grep "core file size")
+    if [[ ! "$ulimit_output" == *"unlimited"* ]]; then
+            wrap_bad "ulimit" "$ulimit_output"
+            exit 1
+      
+    fi
+
+    wrap_good "ulimit" "$ulimit_output"
+
+}
+
+core_pattern() {
+
+    core_pattern=$(cat /proc/sys/kernel/core_pattern)
+    if [ "$core_pattern" != "$COREDIR/core.%e.%p" ]; then
+        wrap_bad "pattern:" "$core_pattern"
+        exit 1
+    else
+        wrap_good "pattern:" "$core_pattern"
+    fi
+
+
+}
+
+core_dir() {
+    core_dir=$(dirname "$core_pattern")
+    if [[ ! -d "$core_dir" ]]; then
+    wrap_bad "directory" "$core_dir does not exist."
+    exit 1
+    else
+    wrap_good "directory" "$core_dir exits"
+    if [[ ! -w "$core_dir" ]]; then
+        wrap_bad "dictectory" "$coredir is not writable. Please check permissions."
+        exit 1
+    else
+        wrap_good "directory" "$core_dir directory is writable."
+    fi
+    fi
+
+}
+
+
+function usage {
+
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m $0 \033[1;38;5;${COLOR}mconfigure\033[0m                    -- configure ulitmit, core pattern and dirs"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m $0 \033[1;38;5;${COLOR}mtest\033[0m                         -- test ulimit, core patten and dirs"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m $0 \033[1;38;5;${COLOR}mget\033[0m                          -- get qbo debug bundle"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m $0 \033[1;38;5;${COLOR}mcore\033[0m core { abort | api }    -- debug core for abort or api bin"
+    exit 1
+}
+
+if [ -z "$1" ]; then
+    usage
+fi
+
+if [ "$1" = "configure" ]; then
+
+    # /etc/security/limits.conf t
+    
+    apt install lz4 gdb gcc
+    ulimit -c unlimited
+
+    cat <<EOF >> /etc/security/limits.conf
+*               soft    core            unlimited
+*               hard    core            unlimited
+EOF
+
+    if [ ! -d $COREDIR ]; then
+        mkdir -p $COREDIR
+        chmod a+w $COREDIR
+    fi
+    #echo 'kernel.core_pattern=/var/coredumps/core-%e-%p' >> /etc/sysctl.d/qbo
+
+    cat <<EOF > /etc/sysctl.d/99-core-dump.conf
+kernel.core_pattern = $COREDIR/core.%e.%p
+EOF
+
+    #sysctl -p
+    /sbin/sysctl --system
+
+    ulimit -a
+    cat /proc/sys/kernel/core_pattern
+
+    #ulimit -c
+    #echo '/tmp/qbo/core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+
+elif [ "$1" = "test" ]; then
+    #core_limit
+    core_pattern
+    core_dir
+    # ulimit -a | grep "core file size"
+    # cat /proc/sys/kernel/core_pattern
+    ls -lct $COREDIR/core.\*
+    ls -lct $HOME/.qbo/core\.*
+elif [ "$1" = "get" ]; then
+    TIMESTAMP=$(date +%Y%m%d%H%M%S)
+    if docker ps --filter "name=qbo" --quiet; then
+        # If the container is running, get the logs
+        docker logs qbo > $HOME/.qbo/qbo.logs
+    else
+        :
+        # If the container is not running, print a message
+        # echo "Container 'qbo' is not running."
+    fi
+    sudo tar -cvzf qbo-$TIMESTAMP.tar.gz -C $HOME --transform="s|^\.qbo|qbo-$TIMESTAMP|" .qbo
+
+        
+
+elif [ "$1" = "core" ]; then
+    #ulimit -a
+    ulimit -c unlimited
+    core_limit
+    bin=abort
+    i=$(docker ps --filter "name=qbo" --format "{{.ID}}")
+    if [ -z "$i" ]; then
+        echo "qbo is not running"
+        exit 1
+    fi
+
+    if [ -z "$2" ]; then
+        usage
+    elif [ $2 = "api" ]; then
+        bin=$2
+    elif [ $2 = "abort" ]; then
+        docker exec -it qbo /usr/bin/abort 
+    else
+        usage
+    fi
+
+    # gerate core
+    docker exec -it qbo /usr/bin/abort
+
+    if ls $HOME/.qbo/core.* 1>/dev/null 2>&1; then
+        ls -lct $HOME/.qbo/core\.*
+    else
+        echo echo "No core dump files found in $HOME/.qbo/"
+        exit 1
+    fi
+
+    last_core=`ls -dt ~/.qbo/core.* | head -1`
+
+    echo "last = $last_core"
+    u=$(whoami)
+    sudo chown $u:$u $last_core
+    filename=${last_core##*/}
+    echo "bin = $bin"
+    echo "core = $filename"
+    read -n 1 -s -r -p "<Press any key to continue>"
+    printf "\n"
+
+    (set -x; docker exec -it qbo gdb /usr/bin/$bin /tmp/qbo/$filename)
+else
+    usage
+fi
+
+
+

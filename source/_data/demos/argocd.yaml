@@ -1,0 +1,7 @@
+title: Deploying ArgoCD on QBO - A Future-Proof CI/CD Solution
+description: In this demo, we’ll explore how QBO enhances ArgoCD by providing multi-architecture support (arm64 & amd64), seamless portability, and optimized performance on bare-metal infrastructures. Let’s dive in!
+link: /demos/argocd/
+preview: /demos/argocd/
+tags:
+  - CI/DC
+  - argocd

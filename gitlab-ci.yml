@@ -1,0 +1,46 @@
+variables:
+  EXTRA_OPTION: ""
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+stages:
+  - build
+  - prod
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+  - build
+
+
+before_script:
+  - docker info
+  - git version
+
+build:
+  stage: build
+  tags:
+    - qbo
+    - shared
+  script:
+    - mkdir -p build/public
+    - rsync -a --delete public/ build/public/
+
+prod:
+  stage: prod
+  tags:
+    - qbo
+  script:
+    - echo "Deploying to github.com"
+    - cd build
+    - git init
+    - git remote add origin ssh://git@site/alexeadem/qbo-public.git
+    - git add .
+    - git commit -m "$CI_COMMIT_REF_SLUG"
+    - git branch -M main
+    #- git pull origin main
+    - git push -u origin main -f
+
+  when: manual  
+  only:
+  - main
+

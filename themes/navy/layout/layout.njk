@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html data-theme="light" lang="{{ page.lang }}">
+{{ partial('partial/head') }}
+<body>
+  <div id="container">
+    {{ partial('partial/header') }}
+    {{ body }}
+    {{ partial('partial/footer') }}
+  </div>
+  <div id="mobile-nav-dimmer"></div>
+  {{ partial('partial/mobile_nav') }}
+  {{ partial('partial/after_footer') }}
+</body>
+
+<!-- Dark Mode -->
+
+<script type="text/javascript">
+document.addEventListener("DOMContentLoaded", function() {
+	if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    console.log("dark");
+
+    document.getElementById("content-wrap")?.style.setProperty('background', '#000');
+    document.getElementsByTagName('body')[0]?.style.setProperty('color', '#dcd6cf');
+    {# document.querySelectorAll('.sidebar-link,.toc-link').forEach((x) => {
+        x.style.color='#dcd6cf';
+    }); #}
+
+    document.documentElement.style.setProperty('--color-default', '#dcd6cf'); // New text color
+
+    document.documentElement.setAttribute('data-theme', 'dark');
+
+
+  }
+	else  {
+    console.log("light");
+    document.getElementById("content-wrap")?.style.setProperty('background', 'white');
+    document.getElementsByTagName('body')[0]?.style.setProperty('color', '#444');
+    
+    {# document.querySelectorAll('.sidebar-link.current, .toc-link.current').forEach(element => {
+            element.style.color = newColor; // Change the color
+    }); #}
+
+     document.documentElement.style.setProperty('--color-default', '#444'); // New text color
+     document.documentElement.setAttribute('data-theme', 'light');
+    
+  }
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+
+		const newColorScheme = event.matches ? "dark" : "light";
+
+		if ( newColorScheme == "dark" ) { 
+			console.log("newColorScheme = " + newColorScheme);
+      document.getElementById("content-wrap")?.style.setProperty('background', '#000');
+      document.getElementsByTagName('body')[0]?.style.setProperty('color', '#dcd6cf');
+
+      document.documentElement.style.setProperty('--color-default', '#dcd6cf'); // New text color
+      document.documentElement.setAttribute('data-theme', 'dark');
+
+      
+    
+		}
+		else {
+			console.log("newColorScheme = " + newColorScheme);
+      document.getElementById("content-wrap")?.style.setProperty('background', 'white');
+      document.getElementsByTagName('body')[0]?.style.setProperty('color', '#444');
+
+      document.documentElement.style.setProperty('--color-default', '#444'); // New text color
+      document.documentElement.setAttribute('data-theme', 'light');
+
+
+		}
+
+	});
+
+}, false);
+    
+</script>
+</html>

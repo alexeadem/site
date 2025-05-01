@@ -1,0 +1,8 @@
+title: Kubeflow
+description: Deploy Kubeflow on QBO Kubernetes Engine (QKE)
+link: /demos/kubeflow/
+preview: /demos/kubeflow/
+tags:
+  - ai
+  - ml
+  - kubeflow

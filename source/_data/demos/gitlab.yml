@@ -1,0 +1,11 @@
+title: Deploying GitLab on QBO with SSL, Pages, Registry, and MinIO
+description: This guide provides a comprehensive walkthrough for deploying **GitLab** on **QBO**, leveraging its powerful features such as **integrated load balancing**, **automated wildcard TLS certificates**, and **MinIO as a backend for GitLab's container registry**.
+link: /demos/gitlab/
+preview: /demos/gitlab/
+tags:
+  - qbo
+  - load balancers
+  - MinIO
+  - GitLab
+  - registry
+  - pages

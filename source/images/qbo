@@ -1,0 +1,2260 @@
+#!/bin/bash
+#set -x
+
+shopt -s expand_aliases
+
+# sysctlBUILD_TYPE
+export PATH=$PATH:/usr/sbin
+
+QBO_API_BIN="api"
+QBO_CLI_BIN="cli"
+QBO_API_DB=~/.qbo/.api.db
+QBO_CLI_DB=~/.qbo/.cli.db
+
+COLOR=75
+
+LL="error"
+FOLLOW=0
+JSON=0
+BUILD_TYPE="prod"
+DEBUG=0;
+CLEAN=0
+EDIT=0
+TAG="latest"
+TYPE=link
+TARGET=""
+CMD=""
+
+ADMIN=""
+
+_ALL=0
+_ADMIN=0
+_UPDATE=0
+_APPARMOR=0
+_POWERLINE=0
+_MOTD=0
+_SELINUX=0
+_DOCKER=0
+_IPTABLES=0
+_REGISTRY=0
+_IPVSADM=0
+_SSH=0
+_HOSTNAME=0
+_NETWORK=0
+_NVIDIA=0
+_USER=0
+_VIM=0
+_IMAGE=0
+
+DEFAULT_ACME_COUNTRY="US"
+DEFAULT_ACME_LOCALITY="San Francisco"
+DEFAULT_ACME_STATE="CA"
+
+##### BEGIN REPLACE  #####
+# let's encrypt url
+DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
+ID_RSA_PUB=""
+IMAGE=""
+
+# BEGIN LINK
+ACME_LINK=""
+DNS_LINK=$ACME_LINK
+# END LINK
+
+# BEGIN ORIGIN
+NAME=origin
+FQDN=$NAME.$ACME_DOMAIN
+CLIENT_ID=""
+REGISTRY_REPO="cloud"
+REGISTRY=""
+KEY=""
+ACME=""
+DNS=""
+IAM=""
+LINK=""
+# END ORIGIN
+
+##### END REPLACE  #####
+
+TEMPLATE=$(cat <<EOF
+{
+    "vhosts": [
+        {
+        "name": "proxy",
+        "port": "443",
+        "access-log": "/tmp/qbo/access-log",
+        "timeout_secs_ah_idle": "30",
+        "connect_timeout_secs": "30",
+        "mounts": [
+            {
+                "mountpoint": "/ipse",
+                "origin": "callback://protocol-qbo-ipse" 
+            },
+            {
+            "mountpoint": "/",
+            "origin": "callback://qbo",
+            "extra-mimetypes": {
+                ".map": "application/json"
+            }
+            }
+        ],
+        "ws-protocols": [
+            {
+            "qbo": {
+                "node": {
+                    "registry": {
+                        "user":"kindest",
+                        "auth":"hub.docker.com",
+                        "token":"",
+                        "repo":"",
+                        "registry":"hub.docker.com",
+                        "type":"docker"
+                    }
+                },
+                "instance": {
+                    "registry": {
+                    }
+                },
+                "registry": {
+                },
+                "iam": null,
+                "dns": null,
+                "acme": null
+            },
+            "qbo-term": {
+            },
+            "qbo-thread": {
+            },
+            "protocol-qbo-ipse": {
+                "status": "ok"
+            },
+            "qbo-acme-client": {
+                "key": null,
+                "acme": null,
+                "dns": null
+            }
+            }
+        ]
+        }
+    ]
+}
+EOF
+)
+
+exit_on_error() {
+    exit_code=$1
+    last_command=${@:2}
+    if [ $exit_code -ne 0 ]; then
+        >&2 echo "\"${last_command}\" command failed with exit code ${exit_code}."
+        exit $exit_code
+    fi
+}
+
+possibleConfigs=(
+	"/boot/config-$(uname -r)"
+	"/usr/src/linux-$(uname -r)/.config"
+	'/usr/src/linux/.config'
+)
+
+if [ $# -gt 0 ]; then
+	CONFIG="$1"
+else
+	: "${CONFIG:="${possibleConfigs[0]}"}"
+fi
+
+if ! command -v zgrep &> /dev/null; then
+	zgrep() {
+		zcat "$2" | grep "$1"
+	}
+fi
+
+kernelVersion="$(uname -r)"
+kernelMajor="${kernelVersion%%.*}"
+kernelMinor="${kernelVersion#$kernelMajor.}"
+kernelMinor="${kernelMinor%%.*}"
+
+is_set() {
+	zgrep "CONFIG_$1=[y|m]" "$CONFIG" > /dev/null
+}
+is_set_in_kernel() {
+	zgrep "CONFIG_$1=y" "$CONFIG" > /dev/null
+}
+is_set_as_module() {
+	zgrep "CONFIG_$1=m" "$CONFIG" > /dev/null
+}
+
+color() {
+	local codes=()
+	if [ "$1" = 'bold' ]; then
+		codes=("${codes[@]}" '1')
+		shift
+	fi
+	if [ "$#" -gt 0 ]; then
+		local code=
+		case "$1" in
+			# see https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+			black) code=30 ;;
+			red) code=31 ;;
+			green) code=32 ;;
+			yellow) code=33 ;;
+			blue) code=34 ;;
+			magenta) code=35 ;;
+			cyan) code=36 ;;
+			white) code=37 ;;
+		esac
+		if [ "$code" ]; then
+			codes=("${codes[@]}" "$code")
+		fi
+	fi
+	local IFS=';'
+	echo -en '\033['"${codes[*]}"'m'
+}
+wrap_color() {
+	text="$1"
+	shift
+	color "$@"
+	echo -n "$text"
+	color reset
+	echo
+}
+
+wrap_info() {
+	echo "$(wrap_color "[ INFO ]" bold grey) $(wrap_color "$1" grey) $(wrap_color "$2" grey)"
+}
+wrap_user() {
+	echo "$(wrap_color "[ USER ]" bold white) $(wrap_color "$1" grey) $(wrap_color "$2" black)"
+}
+wrap_ok() {
+	echo "$(wrap_color "[  OK  ]" bold green) $(wrap_color "$1" grey) $(wrap_color "$2" green)"
+}
+wrap_error() {
+	echo "$(wrap_color "[ ERROR ]" bold red ) $(wrap_color "$1" red) $(wrap_color "$2" black)"
+}
+wrap_warn() {
+    echo "$(wrap_color "[ INFO ]" bold yellow) $(wrap_color "$1" yellow) $(wrap_color "$1" yellow)"
+}
+
+
+check_flag() {
+	if is_set_in_kernel "$1"; then
+		wrap_ok "CONFIG_$1" 'enabled'
+	elif is_set_as_module "$1"; then
+		wrap_ok "CONFIG_$1" 'enabled (as module)'
+	else
+		wrap_error "CONFIG_$1" 'missing'
+		EXITCODE=1
+	fi
+}
+
+check_flags() {
+	for flag in "$@"; do
+		echo -n "- "
+		check_flag "$flag"
+	done
+}
+
+check_command() {
+	if command -v "$1" > /dev/null 2>&1; then
+		wrap_ok "$1 command" 'available'
+	else
+		wrap_error "$1 command" 'missing'
+		EXITCODE=1
+	fi
+}
+
+check_device() {
+	if [ -c "$1" ]; then
+		wrap_ok "$1" 'present'
+	else
+		wrap_error "$1" 'missing'
+		EXITCODE=1
+	fi
+}
+
+check_distro_userns() {
+	source /etc/os-release 2> /dev/null || /bin/true
+	if [[ "${ID}" =~ ^(centos|rhel)$ && "${VERSION_ID}" =~ ^7 ]]; then
+		# this is a CentOS7 or RHEL7 system
+		grep -q "user_namespace.enable=1" /proc/cmdline || {
+			# no user namespace support enabled
+			wrap_error "  (RHEL7/CentOS7" "User namespaces disabled; add 'user_namespace.enable=1' to boot command line)"
+			EXITCODE=1
+		}
+	fi
+}
+
+run_linux_tests() {
+
+    if [ ! -e "$CONFIG" ]; then
+        # wrap_warn "warning: $CONFIG does not exist, searching other paths for kernel config ..."
+        for tryConfig in "${possibleConfigs[@]}"; do
+            if [ -e "$tryConfig" ]; then
+                CONFIG="$tryConfig"
+                break
+            fi
+        done
+        if [ ! -e "$CONFIG" ]; then
+            wrap_warn "error: cannot find kernel config"
+            wrap_warn "  try running this script again, specifying the kernel config:"
+            wrap_warn "    CONFIG=/path/to/kernel/.config $0 or $0 /path/to/kernel/.config"
+            exit 1
+        fi
+    fi
+
+    wrap_info "reading kernel config from $CONFIG ..." white
+    # echo
+
+	# echo -n '- '
+	check_cgroup() {
+
+		cgroupSubsystemDir="$(awk '/[, ](cpu|cpuacct|cpuset|devices|freezer|memory)[, ]/ && $3 == "cgroup" { print $2 }' /proc/mounts | head -n1)"
+		cgroupDir="$(dirname "$cgroupSubsystemDir")"
+		cgroup_v=$(stat -fc %T /sys/fs/cgroup/)
+		if [ -d "$cgroupDir/cpu" ] || [ -d "$cgroupDir/cpuacct" ] || [ -d "$cgroupDir/cpuset" ] || [ -d "$cgroupDir/devices" ] || [ -d "$cgroupDir/freezer" ] || [ -d "$cgroupDir/memory" ]; then
+			echo "$(wrap_error 'cgroup hierarchy') $cgroup_v"
+			exit 1
+		else
+			wrap_ok "cgroup hierarchy" "$cgroup_v"
+		fi
+	}
+
+
+    check_limit_under__max_user_watches() {
+        if [ "$(cat "$1")" -lt "$2" ]; then
+            wrap_warn "- $1" "$(cat "$1")"
+            echo "sysctl fs.inotify.max_user_watches=2147483647"
+            read -n 1 -s -r -p "<Press any key to run command>"
+            sudo sysctl fs.inotify.max_user_watches=2147483647
+        else
+            wrap_ok "$1" "$(cat "$1")"
+        fi
+    }
+
+    check_limit_under__max_user_instances() {
+        if [ "$(cat "$1")" -lt "$2" ]; then
+            wrap_warn "- $1" "$(cat "$1")"
+            # echo "Set to $2 to run more nodes"
+            echo "sysctl fs.inotify.max_user_instances=2048"
+            read -n 1 -s -r -p "<Press any key to continue cmd>"
+            sudo sysctl fs.inotify.max_user_instances=2048
+
+        else
+            wrap_ok "$1" "$(cat "$1")"
+        fi
+    }
+
+     check_limit_under__max_queued_events() {
+        if [ "$(cat "$1")" -lt "$2" ]; then
+            wrap_warn "- $1" "$(cat "$1")"
+            # echo "Set to $2 to run more nodes"
+            echo "sysctl fs.inotify.max_queued_events=2147483647"
+            read -n 1 -s -r -p "<Press any key to continue cmd>"
+            sudo sysctl fs.inotify.max_queued_events=2147483647
+
+        else
+            wrap_ok "$1" "$(cat "$1")"
+        fi
+    }
+
+
+    # SE linux
+    check_selinux() {
+        if [ -f "/etc/selinux/config" ]; then
+            # sestatus
+            status=$(sestatus  | awk '{print $3}')
+            # echo $status
+            if [ "$status" != "disabled" ] && [ "$status" != "permissive" ] ; then
+                wrap_color "  SELinux should be disabled or in permissive mode, for example set: setenforce 0" bold red
+                exit 1
+            fi
+
+			wrap_ok "$1" "$status"
+
+        fi
+
+    }
+
+	check_firewalld() {
+		status=$(systemctl is-active firewalld)
+
+		if [ "$status" != "inactive" ] ; then
+			wrap_error "- $1" "$status"
+			wrap_color "  firewalld should be disabled. Run: systemctl stop firewalld; systemctl disable firewalld" bold red
+			exit 1
+		fi
+
+		wrap_ok "$1" "$status"
+
+
+	}
+
+	check_distro() {
+		source /etc/os-release 2> /dev/null || /bin/true
+		if [[ "${ID}" =~ ^(fedora)$ && "${VERSION_ID}" -ge 38 ]]; then
+            wrap_ok "$1" "${ID} ${VERSION_ID}"
+        elif [[ "${ID}" =~ ^(debian)$ && "${VERSION_ID}" -ge 12 ]]; then
+            wrap_ok "$1" "${ID} ${VERSION_ID}"
+        else
+		    wrap_error "- ${1}" "$ID"
+		    exit 1
+		fi
+
+	}
+
+	vercomp () {
+		if [[ $1 == $2 ]]
+		then
+			return 0
+		fi
+		local IFS=.
+		local i ver1=($1) ver2=($2)
+		# fill empty fields in ver1 with zeros
+		for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+		do
+			ver1[i]=0
+		done
+		for ((i=0; i<${#ver1[@]}; i++))
+		do
+			if [[ -z ${ver2[i]} ]]
+			then
+				# fill empty fields in ver2 with zeros
+				ver2[i]=0
+			fi
+			if ((10#${ver1[i]} > 10#${ver2[i]}))
+			then
+				return 1
+			fi
+			if ((10#${ver1[i]} < 10#${ver2[i]}))
+			then
+				return 2
+			fi
+		done
+		return 0
+	}
+
+	check_docker() {
+
+        if ! command -v docker &> /dev/null
+        then
+            wrap_error "- Docker is not installed." "Exiting"
+            exit 1
+        fi
+		version=$(docker version --format '{{.Client.APIVersion}}')
+
+		vercomp $version $2
+                status=$?
+		if [ $status = 0 ]; then
+                    wrap_ok "Docker" "$version"
+                elif [ $status = 1 ]; then
+                    wrap_ok "Docker" "$version"
+                elif [ $status = 2 ]; then
+		    wrap_error "- Docker" "$version"
+		    exit 1
+                fi
+	}
+
+    check_auth_env() {
+        if [ -z "$REGISTRY_TOKEN" ]; then
+            wrap_error "REGISTRY_TOKEN" "required"
+            exit 1
+        fi
+
+
+    }
+
+    check_net_bridge_bridge_nf_call_iptables() {
+
+        if [ "$(sudo sysctl ${1})" = "${1} = ${2}" ]; then
+            wrap_ok "$1" "$2"
+        else
+            wrap_warn "- ${1}" "0"
+
+            sudo modprobe br_netfilter
+            exit_on_error $?
+            sudo sysctl -p /etc/sysctl.conf
+            exit_on_error $?
+
+        fi
+
+    }
+
+    check_net_bridge_bridge_nf_call_ip6tables() {
+        if [ "$(sudo sysctl ${1})" = "${1} = ${2}" ]; then
+            wrap_ok "$1" "$2"
+        else
+            wrap_warn "- ${1}" "0"
+            sudo modprobe br_netfilter
+            exit_on_error $?
+            sudo sysctl -p /etc/sysctl.conf
+            exit_on_error $?
+
+        fi
+    }
+
+	check_cgroup
+    check_limit_under__max_user_watches /proc/sys/fs/inotify/max_user_watches 2147483647
+    check_limit_under__max_user_instances /proc/sys/fs/inotify/max_user_instances 2048
+    check_limit_under__max_queued_events /proc/sys/fs/inotify/max_queued_events 2147483647
+    check_net_bridge_bridge_nf_call_iptables net.bridge.bridge-nf-call-iptables 1
+    check_net_bridge_bridge_nf_call_ip6tables net.bridge.bridge-nf-call-ip6tables 1
+
+	check_selinux selinux enabled
+	check_firewalld firewalld enabled
+	check_distro OS
+	check_docker version 1.43
+
+
+}
+
+machine=Linux
+
+o="$(uname -s)"
+case "${o}" in
+    Linux*)
+
+    machine=Linux;;
+    Darwin*)
+    machine=Mac;;
+    *)
+    machine="UNKNOWN:${o}"
+esac
+
+exit_on_error() {
+    exit_code=$1
+    last_command=${@:2}
+    if [ $exit_code -ne 0 ]; then
+        >&2 echo "\"${last_command}\" command failed with exit code ${exit_code}."
+        exit $exit_code
+    fi
+}
+
+usage() {
+
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mstart\033[0m api                        -- start $QBO_API_BIN"
+    echo " -C { domain }                           -- * required valid domain name. example: cloud.qbo.io"
+    echo " -c                                      -- start clean"
+    echo " -r                                      -- build type. default: prod"
+    echo " -T                                      -- tag. default: latest"
+    echo " -t { link | origin }                    -- API mode. default: link"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mstop\033[0m api                         -- stop $QBO_API_BIN api"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mattach\033[0m terminal                  -- attach $QBO_API_BIN. (CTRL-p, CTL-q) to exit"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mlogs\033[0m api                         -- get $QBO_API_BIN logs"
+    echo " -f                                      -- follow logs"
+    echo " -j                                      -- output json"
+    echo " -e                                      -- output vi"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mtest\033[0m host                        -- test HOST compatibility"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mconfigure\033[0m api                    -- configure API in mode LINK or ORIGIN"
+    echo " -C { domain }                           -- * required valid domain name. example: cloud.qbo.io 
+ -r { prod |stage }                      -- configure build type. default: prod
+ -t { link | origin }                    -- configure link or origin. default: link 
+ -c                                      -- clean previous configuration"
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m qbo \033[1;38;5;${COLOR}mconfigure\033[0m host                   -- configure host or API"
+    echo " -C { domain }                           -- * required valid domain name. example: cloud.qbo.io 
+ -r { prod |stage }                      -- configure build type. default: prod
+ -a                                      -- all
+ -u                                      -- update
+ -p                                      -- apparmor
+ -h                                      -- hostname
+ -U                                      -- user
+ -m                                      -- motd
+ -e                                      -- vim
+ -v                                      -- ipvsadm
+ -i                                      -- iptables
+ -d                                      -- docker
+ -R                                      -- registry
+ -x                                      -- nvidia
+ -s                                      -- ssh
+ -I                                      -- images"
+    exit 1
+}
+# auphUmevidrxsqA
+
+# _update
+# _apparmor
+# _hostname
+# _user
+# _motd
+# _vim
+# _ipvsadm
+# _iptables
+# _docker
+# _registry
+# _nvidia
+# _ssh
+
+function test {
+
+    qbo_info
+
+    read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+    printf "\n"
+
+    if grep -i 'debian' /etc/os-release > /dev/null; then
+        apt update && apt install kmod procps
+    fi
+
+    run_linux_tests
+
+}
+
+validate_empty() {
+
+    if [ -z "$1" ]; then
+        # wrap_error "input required"
+        return 1
+
+    else
+        return 0
+    fi
+
+}
+
+validate_organization() {
+
+    if ! validate_empty $1; then
+        wrap_error "input required"
+        return 1
+    fi
+
+    local org_name="$1"
+    local max_length=64  # Define maximum allowed length
+
+    # Check if the organization name contains a period
+    if [[ "$org_name" =~ \. ]]; then
+        wrap_error "Organization name should not contain periods."
+        return 1
+    fi
+
+    # Check if the organization name exceeds the maximum length
+    if [ ${#org_name} -gt $max_length ]; then
+        wrap_error "Organization name should not exceed $max_length characters."
+        return 1
+    fi
+
+    wrap_error "Organization name is valid."
+}
+
+validate_domain() {
+
+    if ! validate_empty $1; then
+        wrap_error "input required"
+        return 1
+    fi
+
+    local domain="$1"
+    # Regular expression to match a valid domain name
+    if [[ "$domain" =~ ^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$ ]]; then
+        return 0
+    else
+        wrap_error "invalid domain $domain"
+        return 1
+    fi
+}
+
+validate_email() {
+
+    if ! validate_empty $1; then
+        wrap_error "input required"
+        return 1
+    fi
+
+    local email="$1"
+
+    # Regular expression for validating email
+    if [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        return 0
+    else
+        wrap_error "invalid email"
+        return 1
+    fi
+}
+
+# Function to validate country code (must be 2 letters)
+validate_country() {
+
+    if ! validate_empty $1; then
+        ACME_COUNTRY=$DEFAULT_ACME_COUNTRY
+        return 0
+    fi
+
+    local country="$1"
+    if [[ "$country" =~ ^[A-Z]{2}$ ]]; then
+        return 0
+    else
+        wrap_error "invalid country code"
+        return 1
+    fi
+}
+
+# Function to validate state (you could expand this to check against a list of valid states)
+validate_state() {
+
+    if ! validate_empty $1; then
+        ACME_STATE=$DEFAULT_ACME_STATE
+        return 0
+    fi
+
+    local state="$1"
+    # if [[ "$state" =~ ^[a-zA-Z ]+$ ]]; then
+    if [[ "$state" =~ ^[a-zA-Z[:space:]]+$ ]]; then
+        return 0
+    else
+        wrap_error "invalid state name"
+        return 1
+    fi
+}
+
+# Function to validate locality (you can use a more complex check if needed)
+validate_locality() {
+
+    if ! validate_empty $1; then
+        ACME_LOCALITY=$DEFAULT_ACME_LOCALITY
+        return 0
+    fi
+
+    local locality="$1"
+    # if [[ "$locality" =~ ^[a-zA-Z ]+$ ]]; then
+    if [[ "$locality" =~ ^[a-zA-Z[:space:]]+$ ]]; then
+        return 0
+    else
+        wrap_error "invalid locality name"
+        return 1
+    fi
+}
+
+is_valid_json() {
+     if ! validate_empty $1; then
+        wrap_error "input required"
+        return 1
+    fi
+
+    jq empty <<< "$1" > /dev/null 2>&1  
+    if [ $? -ne 0 ]; then
+        # echo "Invalid JSON provided."
+        wrap_error "invalid JSON provided."
+        return 1  # Return 1 to indicate invalid JSON
+    else
+        return 0  # Return 0 to indicate valid JSON
+    fi
+}
+
+function qbo_info {
+
+ echo -e "\033[1;38;5;${COLOR}m
+       .oO °°°°OOO o.
+    .o°        OO    °o.
+   OO          OO      OO
+  OO  .oOOOo   OOOOOo.  OO
+  O  OO    OO  OO    OO  O
+  O  OO    OO  OO    OO  O
+  OO   °OOOOO   °OOO°   OO
+   OO      OO          OO
+    °o     OO         o° 
+       °Oo 00     .oO°    $QBO_API_BIN:$TAG
+           °°°°°°   
+\033[0m"
+
+    if [ "$(echo $CMD | cut -d' ' -f1)" = "test" ]; then
+        printf "\033[1m%-8s\033[0m %-22s\n" "HOST" "$(hostname)"
+        printf "\033[1m%-8s\033[0m %-22s\n" "CMD" "$CMD"
+        return
+    fi 
+        
+    printf "\033[1m%-8s\033[0m %-22s\n" "VERSION" "$TAG"
+    printf "\033[1m%-8s\033[0m %-22s\n" "CLOUD" "*.$ACME_DOMAIN"
+
+    if [ "$(echo $CMD | cut -d' ' -f1)" = "start" ]; then
+        printf "\033[1m%-8s\033[0m %-22s\n" "TYPE" "$TYPE"
+    fi
+
+    printf "\033[1m%-8s\033[0m %-22s\n" "IMAGE" "$IMAGE"
+    printf "\033[1m%-8s\033[0m %-22s\n" "BUILD" "$BUILD_TYPE"
+
+    if [ $CLEAN = 1 ]; then
+        printf "\033[1m%-8s\033[0m %-22s\n" "CLEAN" "$CLEAN"
+    fi
+
+    # if [ $LOCAL = 1 ]; then
+    #     printf "\033[1m%-8s\033[0m %-22s\n" "LOCAL" "$LOCAL"
+    # fi
+    
+    if [ $DEBUG = 1 ]; then
+        printf "\033[1m%-8s\033[0m %-22s\n" "DEBUG" "$DEBUG"
+    fi
+
+    if [ "$(echo $CMD | cut -d' ' -f1)" = "start" ]; then
+        printf "\033[1m%-8s\033[0m %-22s\n" "LOG" "$LL"
+    fi
+
+    printf "\033[1m%-8s\033[0m %-22s\n" "CMD" "$CMD"
+    echo "--------------------------------------------------------"
+    read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+    printf "\n"
+}
+
+
+function configure_host {
+
+
+
+    set -e
+
+    configure_json
+
+
+    if [ $_ALL = 0 ]; then
+        wrap_info "Nothing to do."
+    fi
+
+
+    IPTABLES=/sbin/iptables
+
+    # update
+    _update() {
+        (set -x; apt-get update -y)
+        (set -x; apt install -y mesa-utils jq sudo kmod procps vim)
+    }
+
+    # hostname
+    _hostname() {
+        (set -x; hostnamectl set-hostname $FQDN)
+    }
+
+    _user() {
+        if ! id qbo &>/dev/null; then
+            (set -x; useradd -r -m --key MAIL_DIR=/dev/null --shell /bin/bash qbo)
+        fi
+        (set -x; usermod -aG sudo qbo)
+        (set -x; usermod -aG systemd-journal qbo)
+        (set -x; sed -i -e 's/^%sudo.*/%sudo ALL=(ALL:ALL) NOPASSWD: ALL/g' /etc/sudoers)
+    }
+
+    # motd
+    _motd() {
+        sh -c "cat <<EOF > /etc/motd
+
+       .oO °°°°OOO o.
+    .o°        OO    °o.
+   OO          OO      OO
+  OO  .oOOOo   OOOOOo.  OO
+  O  OO    OO  OO    OO  O
+  O  OO    OO  OO    OO  O
+  OO   °OOOOO   °OOO°   OO
+   OO      OO          OO
+    °o     OO         o°
+       °Oo 00     .oO°    "$(hostname)"
+           °°°°°°
+\"Unlocking the power of cloud computing for anyone, anywhere.\"
+EOF"
+
+        (set -x; cat /etc/motd)
+        if [ -f "/etc/motd.d/cockpit" ]; then
+            (set -x; mv /etc/motd.d/cockpit ~/cockpit.rm)
+        fi
+
+    }
+
+    # apparmor
+    _apparmor() {
+        systemctl stop apparmor
+        systemctl disable apparmor
+        apt remove --assume-yes --purge apparmor
+    }
+
+    _docker() {
+        # docker
+        # Add Docker's official GPG key:
+        apt-get update -y
+        apt-get install -y ca-certificates curl
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+
+        # Add the repository to Apt sources:
+        echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+        $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+        tee /etc/apt/sources.list.d/docker.list > /dev/null
+        (set -x; apt-get update -y)
+        (set -x; apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
+
+        (set -x; usermod -aG docker qbo)
+        cat << EOF > /etc/docker/daemon.json
+{
+"log-driver": "journald"
+}
+EOF
+        (set -x; systemctl enable docker)
+        (set -x; systemctl restart docker)
+        (set -x; systemctl status docker --no-pager)
+        #(set -x; docker run hello-world)
+
+        # buildx
+        mkdir -p /home/qbo/.docker/cli-plugins/
+        curl -Lo /home/qbo/.docker/cli-plugins/docker-buildx  https://github.com/docker/buildx/releases/download/v0.16.0/buildx-v0.16.0.linux-amd64
+        chmod 755 /home/qbo/.docker/cli-plugins/docker-buildx
+        chown qbo:qbo -R /home/qbo/.docker
+    }
+
+    # iptables
+    _iptables() {
+
+        (set -x; echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections)
+        (set -x; echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections)
+        (set -x; apt install -y iptables-persistent)
+
+        (set -x; $IPTABLES -F INPUT)
+        (set -x; $IPTABLES -A INPUT -i lo -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT ! -i lo -d 127.0.0.0/8 -j REJECT)
+        (set -x; $IPTABLES -A INPUT -i docker0 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -i br-+ -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 80 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 443 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 5900 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 9601 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 6443 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 8006 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 8080 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -s 10.0.0.0/24 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -s 10.1.0.0/24 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p udp --dport 49152:65535 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p udp --dport 3478 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p udp --dport 3479 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 3478 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 3479 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp --dport 3389 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p tcp -m state --state NEW --dport 22 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -p icmp -m icmp --icmp-type 8 -j ACCEPT)
+        (set -x; $IPTABLES -A INPUT -m limit --limit 5/min -j LOG --log-prefix "iptables denied: " --log-level 7)
+        (set -x; $IPTABLES -A INPUT -j REJECT)
+
+        (set -x; sh -c "iptables-save > /etc/iptables/rules.v4")
+        (set -x; sh -c "cat /etc/iptables/rules.v4")
+    }
+
+    # registry
+    _registry() {
+        if [ ! -d "$ACME_DOMAIN/$BUILD_TYPE/registry.json" ]; then
+            REGISTRY=$(cat $ACME_DOMAIN/$BUILD_TYPE/registry.json);
+        else
+            wrap_error "registry.json" 'not found'
+            usage
+        fi
+        # echo $REGISTRY
+        REGISTRY_TOKEN=$(echo $REGISTRY | jq -r .token)
+        REGISTRY_USER=$(echo $REGISTRY | jq -r .user)
+        REGISTRY_HOSTNAME=$(echo $REGISTRY | jq -r .hostname)
+
+        echo "$REGISTRY_TOKEN" | docker login -u "$REGISTRY_USER" --password-stdin $REGISTRY_HOSTNAME
+        cp -R /root/.docker/ /home/qbo/
+        chown qbo:qbo -R /home/qbo/.docker
+        (set -x; cat /home/qbo/.docker/config.json)
+        printf "\n"
+
+    }
+
+    # registry
+    _image() {
+
+        if [ ! -d "$ACME_DOMAIN/$BUILD_TYPE/registry.json" ]; then
+            REGISTRY=$(cat $ACME_DOMAIN/$BUILD_TYPE/registry.json);
+        else
+            wrap_error "registry.json" 'not found'
+            usage
+        fi
+
+        REGISTRY_TOKEN=$(echo $REGISTRY | jq -r .token)
+        REGISTRY_USER=$(echo $REGISTRY | jq -r .user)
+        REGISTRY_HOSTNAME=$(echo $REGISTRY | jq -r .hostname)
+
+        (set -x; docker pull $REGISTRY_HOSTNAME/$REGISTRY_USER/cloud/instance:plasma.x264enc)
+        (set -x; docker pull $REGISTRY_HOSTNAME/$REGISTRY_USER/cloud/instance:mc2)
+        (set -x; docker pull kindest/node:v1.30.4)
+
+    }
+
+    # ipvsadm
+    _ipvsadm() {
+
+        (set -x; apt install -y ipvsadm)
+        (set -x; ipvsadm -Ln)
+        #modprobe ip_vs
+        (set -x; lsmod | grep ^ip_vs)
+
+    }
+
+    # vim
+    _vim() {
+
+        cat << EOF >> /home/qbo/.vimrc
+set mouse-=a
+set t_Co=256
+if has("autocmd")
+au BufReadPost * if line("'\"") > 0 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
+endif
+syntax on
+set tabstop=8 softtabstop=0 expandtab shiftwidth=4 smarttab
+EOF
+
+        chown qbo:qbo /home/qbo/.vimrc
+        cat /home/qbo/.vimrc
+}
+
+    # ssh
+    _ssh() {
+
+        if [ ! -d "$ACME_DOMAIN/$BUILD_TYPE/id_rsa.pub" ]; then
+            ID_RSA_PUB=$(cat $ACME_DOMAIN/$BUILD_TYPE/id_rsa.pub);
+        else
+            wrap_error "id_rsa.pub" 'not found'
+            usage
+        fi
+
+        if [ ! -d "/home/qbo/.ssh" ]; then
+            (set -x; mkdir /home/qbo/.ssh)
+        fi
+
+        (set -x; echo -e "y" | ssh-keygen -t rsa -f /home/qbo/.ssh/id_rsa -N "")
+
+        (set -x; echo $ID_RSA_PUB > /home/qbo/.ssh/authorized_keys)
+        (set -x; cat /home/qbo/.ssh/id_rsa.pub >> /home/qbo/.ssh/authorized_keys)
+        (set -x; chown qbo:qbo -R /home/qbo/.ssh/)
+
+        sed -i 's/#\?\(PubkeyAuthentication\s*\).*$/\1yes/' /etc/ssh/sshd_config
+        sed -i 's/#\?\(PermitEmptyPasswords\s*\).*$/\1no/' /etc/ssh/sshd_config
+        sed -i 's/#\?\(PasswordAuthentication\s*\).*$/\1no/' /etc/ssh/sshd_config
+        sed -i 's/#\?\(X11Forwarding\s*\).*$/\1no/' /etc/ssh/sshd_config
+        sed -i 's/#\?\(PermitRootLogin\s*\).*$/\1no/' /etc/ssh/sshd_config
+
+        chown qbo:qbo -R /home/qbo/.ssh
+        cat /etc/ssh/sshd_config | grep  '^PubkeyAuthentication\|^PermitEmptyPasswords\|^PasswordAuthentication\|^X11Forwarding\|^PermitRootLogin'
+        (set -x; systemctl restart sshd)
+    }
+
+    # nvidia
+    _nvidia() {
+
+        # https://wiki.debian.org/NvidiaGraphicsDrivers#Debian_11_.22Bullseye.22
+        # lspci check
+
+        if lspci -nn | egrep -i "3d|display|vga" | grep -i "nvidia" &> /dev/null
+        then
+            echo "NVIDIA GPU detected."
+            # driver
+            # /etc/apt/sources.list
+            # deb http://deb.debian.org/debian/ bullseye main contrib non-free
+            sed -i 's/\(deb http:\/\/deb.debian.org\/debian\/ bookworm main\)/\1 contrib non-free/' /etc/apt/sources.list
+            apt update
+            apt install -y nvidia-driver firmware-misc-nonfree
+
+            # nvidia-detect
+
+            # toolkit
+            curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+            && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+            sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+            tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+            apt-get update
+
+            apt-get install -y nvidia-container-toolkit
+        else
+            echo "No NVIDIA GPU detected. Exiting."
+        fi
+
+    }
+
+    if [ $_UPDATE = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _update\033[0m"
+        _update
+        exit_on_error $?
+    fi
+
+    if [ $_APPARMOR = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _apparmor\033[0m"
+        _apparmor
+        exit_on_error $?
+    fi
+
+    if [ $_HOSTNAME = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _hostname\033[0m"
+        _hostname
+        exit_on_error $?
+    fi
+
+    if [ $_USER = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _user\033[0m"
+        _user
+        exit_on_error $?
+    fi
+
+    # if [ $_POWERLINE = 1 ] || [ $_ALL = 1 ]; then
+    #     echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _powerline\033[0m"
+    #     _powerline
+    #     exit_on_error $?
+    # fi
+
+    if [ $_MOTD = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _motd\033[0m"
+        _motd
+        exit_on_error $?
+    fi
+
+    if [ $_VIM = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _vim\033[0m"
+        _vim
+        exit_on_error $?
+    fi
+
+    if [ $_IPVSADM = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _ipvsadm\033[0m"
+        _ipvsadm
+        exit_on_error $?
+    fi
+
+    if [ $_IPTABLES = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _iptables\033[0m"
+        _iptables
+        exit_on_error $?
+    fi
+
+    if [ $_DOCKER = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _docker\033[0m"
+        _docker
+        exit_on_error $?
+    fi
+
+    if [ $_REGISTRY = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _registry\033[0m"
+        _registry
+        exit_on_error $?
+    fi
+
+    if [ $_IMAGE = 1  ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _image\033[0m"
+        _image
+        exit_on_error $?
+    fi
+
+    # if [ $_SELINUX = 1 ] || [ $_ALL = 1 ]; then
+    #     echo "selinux"
+    #     _selinux
+    #     exit_on_error $?
+    # fi
+
+    if [ $_NVIDIA = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _nvidia\033[0m"
+        _nvidia
+        exit_on_error $?
+    fi
+
+    if [ $_SSH = 1 ] || [ $_ALL = 1 ]; then
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m _ssh\033[0m"
+        _ssh
+        exit_on_error $?
+    fi
+
+
+}
+
+function configure {
+
+
+    # BEGIN image
+    if [ $BUILD_TYPE = "prod" ]; then
+    	IMAGE=eadem/$QBO_API_BIN:$TAG
+    else
+       IMAGE=registry.qbo.io/qbo/cloud/$QBO_API_BIN:$TAG
+    fi
+    # END image
+
+    qbo_info
+
+    if [ $CLEAN = 1 ]; then
+        # echo "OPTION = CLEAN"
+        if [ -d "$ACME_DOMAIN/$BUILD_TYPE" ]; then
+            wrap_warn "[WARNING]" "$ACME_DOMAIN/$BUILD_TYPE already exists. Do you want to archive it?"
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+            mv ./$ACME_DOMAIN/$BUILD_TYPE ./$ACME_DOMAIN/$BUILD_TYPE-$(date +%Y%m%d%H%M%S)
+        fi
+    fi
+
+    # echo "REGISTRY = $REGISTRY"
+    if [ -d "$ACME_DOMAIN/$BUILD_TYPE" ]; then
+        configure_json
+    else 
+        mkdir -p $ACME_DOMAIN/$BUILD_TYPE
+
+        # BEGIN env
+        if [ -f env ]; then
+            . ./env
+        else
+            wrap_warn "[WARNING]" "The environment file containing authentication credentials was not found. These credentials are necessary to run QBO in $TYPE mode. Contact the QBO account team at info@qbo.io to obtain the file, or enter the credentials manually using this wizard."
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+        fi
+        # ENV env
+        
+    fi
+
+    # BEGIN registry.json
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m registry.json\033[0m"
+
+    if [ -z "$REGISTRY" ]; then
+
+        while true; do
+            wrap_user "Enter QBO Registry Credentials ($BUILD_TYPE)" ""
+            wrap_info "Input in JSON format"
+            echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+            while true; do
+                # Read input line by line
+                read -r line
+                
+                # Break the loop if the user presses Enter without typing anything (empty line)
+                if [[ -z "$line" ]]; then
+                    break
+                fi
+                
+                REGISTRY="$REGISTRY$line"$'\n'
+            done
+
+            if is_valid_json "$REGISTRY"; then
+                break
+            else
+                REGISTRY=""  
+            fi
+        done
+    fi
+    
+    echo $REGISTRY | jq
+
+    read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+    printf "\n"
+
+    echo $REGISTRY | jq > $ACME_DOMAIN/$BUILD_TYPE/registry.json
+    # END registry.json
+
+    # BEGIN id_rsa.pub
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m id_rsa.pub\033[0m"
+
+    if [ -z "$ID_RSA_PUB" ]; then
+        while true; do
+            wrap_user "Enter SSH Id RSA Public Key" ""
+            wrap_info "The 'qbo' script will automatically add a public SSH key to the 'authorized_hosts' file. The host can then only be accessed using the corresponding private key, as password authentication will be disabled."
+            # wrap_info "Input as single line RSA public key"
+            echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+            read -r ID_RSA_PUB
+            if validate_empty "$ID_RSA_PUB"; then
+                break;
+            else
+                wrap_error "input required"
+            fi
+        done
+    else
+        if validate_empty "$ID_RSA_PUB"; then
+            :
+        else
+            wrap_error "input required"
+            exit 1
+        fi
+    fi
+
+
+    
+    echo $ID_RSA_PUB
+
+    read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+    printf "\n"
+
+    echo $ID_RSA_PUB > $ACME_DOMAIN/$BUILD_TYPE/id_rsa.pub
+    # END id_rsa.pub
+
+    # BEGIN host
+    if  [ "$TARGET" = "host" ]; then
+        TARGET=$1
+        configure_host
+        exit 0
+    fi
+    # END host
+
+    
+
+    # BEGIN iam.json
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m iam.json\033[0m"
+    #https://console.cloud.google.com/apis/credentials?
+
+    if [ -z "$IAM" ]; then
+        if [ -z "$CLIENT_ID" ]; then
+            while true; do
+                wrap_user "Enter Google Authentication Client ID" ""
+                wrap_info "Your Client ID can be found under 'API & Services' in the Google Cloud Console. Visit https://console.cloud.google.com/apis/credentials to locate it. It is required to authenticate your application with Google services. Example: '1234567890-abcdefg.apps.googleusercontent.com'."
+                echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                read -r CLIENT_ID
+                if validate_empty "$CLIENT_ID"; then
+                    break;
+                else
+                    wrap_error "input required"
+                fi
+            done
+        else
+            if validate_empty "$CLIENT_ID"; then
+                :
+            else
+                wrap_error "input required"
+                exit 1
+            fi
+        fi
+
+        IAM=$(echo "{}" | jq --arg client_id "$CLIENT_ID" '. + {client_id: $client_id, provider: "google"}')
+    fi
+
+    echo $IAM | jq
+ 
+    read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+    printf "\n"
+
+    echo $IAM | jq > $ACME_DOMAIN/$BUILD_TYPE/iam.json
+    # END iam.json
+
+    if [ $TYPE = "origin" ]; then
+        # BEGIN key.json
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m key.json\033[0m"
+        if [ -z "$KEY" ]; then
+
+            while true; do
+                wrap_user "Enter QBO Key" ""
+                echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                while true; do
+                    # Read input line by line
+                    read -r line
+                    
+                    # Break the loop if the user presses Enter without typing anything (empty line)
+                    if [[ -z "$line" ]]; then
+                        break
+                    fi
+                    
+                    # Append the line to the DNS variable, with a newline
+                    KEY="$KEY$line"$'\n'
+                done
+
+                # echo $DNS | jq
+
+                if is_valid_json "$KEY"; then
+                    break
+                else
+                    KEY=""  # Clear the DNS variable for the next attempt
+                fi
+            done
+        fi
+
+        echo $KEY | jq
+
+        read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+        printf "\n"
+
+        echo $KEY | jq > $ACME_DOMAIN/$BUILD_TYPE/key.json
+        # END key.json
+
+        # BEGIN acme.json
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m acme.json\033[0m"
+        if [ -z "$ACME" ]; then
+            
+            # country
+            if [ -z "$ACME_COUNTRY" ]; then
+                while true; do
+                    wrap_user "Enter ACME Country" "$DEFAULT_ACME_COUNTRY"
+                    # wrap_info "The 2-letter country code (alpha-2) is the standard format for representing the country in ACME certificates, including Let’s Encrypt certificates. https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2"
+                    wrap_info "The 'Country' field specifies the country where your organization is based. Enter a valid two-letter country code as per the ISO 3166-1 standard. For example, 'US' for the United States or 'GB' for the United Kingdom"
+                    echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                    read  ACME_COUNTRY
+                    if validate_country "$ACME_COUNTRY"; then
+                        break;
+                    else
+                        :
+                    fi
+                done
+            else
+                validate_country $ACME_COUNTRY
+            fi
+
+            # locality
+            if [ -z "$ACME_LOCALITY" ]; then
+                ACME_LOCALITY="San Francisco"
+                while true; do
+                    wrap_user "Enter ACME Locality" "$ACME_LOCALITY"
+                    wrap_info "The 'Locality' field specifies the city or locality of your organization. Example: San Francisco"
+                    echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                    read  ACME_LOCALITY
+                    if validate_locality "$ACME_LOCALITY"; then
+                        break;
+                    else
+                        :
+                    fi
+                done
+            fi
+            validate_locality $ACME_LOCALITY
+
+            # organization
+            if [ -z "$ACME_ORGANIZATION" ]; then
+                ACME_ORGANIZATION="qbo.io"
+                while true; do
+                    wrap_user "Enter ACME Organizaton" ""
+                    wrap_info "The 'Organization' field identifies your organization within the certificate. Example: Acme Technologies LLC"
+                    echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                    read  ACME_ORGANIZATION
+                    if validate_organization "$ACME_ORGANIZATION"; then
+                        break;
+                    else
+                        :
+                    fi
+                done
+            fi
+            validate_organization $ACME_ORGANIZATION
+
+            # state
+            if [ -z "$ACME_STATE" ]; then
+                while true; do
+                    wrap_user "Enter ACME State" "{ CA }"
+                    # wrap_info "ST typically refers to the field in certificates (e.g., ACME) where State or Province is specified in X.509 Distinguished Names. https://en.wikipedia.org/wiki/ISO_3166-2"
+                    wrap_info "The 'State' field specifies the state, province, or region where your organization is located. Enter the full name of the state or its appropriate abbreviation. For example, 'California' or 'CA' for California in the United States, 'Ontario' or 'ON' for Ontario in Canada."
+                    echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                    read  ACME_STATE
+                    if validate_state $ACME_STATE; then
+                        break;
+                    else
+                        :
+                    fi
+                done
+            else
+                validate_state $ACME_STATE
+            fi
+
+            if [ -z "$ACME_EMAIL" ]; then
+                while true; do
+                    wrap_user "Enter ACME Email" ""
+                    echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                    read ACME_EMAIL
+                    if validate_email $ACME_EMAIL; then
+                        break;
+                    else
+                        :
+                    fi
+                done
+            else
+                validate_email $ACME_EMAIL
+
+            fi
+
+            ACME=$(cat <<EOF
+{
+    "provider": "letsencrypt",
+    "type": "dns-01",
+    "auth-path": "/tmp/qbo/acme/live/${ACME_DOMAIN}/auth.jwk",
+    "cert-path": "/tmp/qbo/acme/live/${ACME_DOMAIN}/fullchain.pem",
+    "key-path": "/tmp/qbo/acme/live/${ACME_DOMAIN}/privkey.pem",
+    "directory-url": "https://acme-v02.api.letsencrypt.org/directory",
+    "country": "$ACME_COUNTRY",
+    "state": "$ACME_STATE",
+    "locality": "$ACME_LOCALITY",
+    "organization": "$ACME_ORGANIZATION",
+    "common-name": "*.$ACME_DOMAIN",
+    "email": "$ACME_EMAIL"
+}
+EOF
+)
+        fi
+        
+        echo $ACME | jq
+
+        read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+        printf "\n"
+
+        echo $ACME | jq > $ACME_DOMAIN/$BUILD_TYPE/acme.json
+        # END acme.json
+
+        # BEGIN dns.json 
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m dns.json\033[0m"
+        if [ -z "$DNS" ]; then
+            DNS_ZONE=""
+            while true; do
+                wrap_user "Enter Google Cloud DNS Zone Name" ""
+                wrap_info "You can find your DNS Zone Name in the Google Cloud Console at: https://console.cloud.google.com/net-services/dns/zones. Please ensure the zone name corresponds to the correct DNS configuration for your project."
+                echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                read DNS_ZONE
+                if validate_empty $DNS_ZONE; then
+                    break
+                else
+                    wrap_error "input required"
+                fi
+            done
+
+            while true; do
+                wrap_user "Enter Google Cloud DNS Service Account" ""
+                wrap_info "You can find your DNS Cloud Service Account under 'IAM & Admin' in the Google Cloud Console: https://console.cloud.google.com/iam-admin/serviceaccounts"
+                echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                while true; do
+                    # Read input line by line
+                    read -r line
+                    
+                    # Break the loop if the user presses Enter without typing anything (empty line)
+                    if [[ -z "$line" ]]; then
+                        break
+                    fi
+                    
+                    # Append the line to the DNS variable, with a newline
+                    DNS="$DNS$line"$'\n'
+                done
+
+                if is_valid_json "$DNS"; then
+                    break
+                else
+                    DNS=""  # Clear the DNS variable for the next attempt
+                fi
+            done
+
+        fi   
+        _DNS=$(echo "$DNS" | jq --arg zone "$DNS_ZONE" '. + {zone: $zone, provider: "google"}')
+        DNS=$_DNS
+        echo $DNS | jq
+
+        read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+        printf "\n"
+
+        echo $DNS | jq > $ACME_DOMAIN/$BUILD_TYPE/dns.json
+        # END DNS.json
+
+        # # BEGIN plugins
+        # if [ ! -d $HOME/.qbo/plugins ]; then
+        #     mkdir $HOME/.qbo/plugins
+        # fi
+        
+        # if [ -f "$ACME_DOMAIN/$BUILD_TYPE/plugins/libwebsockets.so.19" ]; then
+        #     echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m $(basename $ACME_DOMAIN/$BUILD_TYPE/plugins/libwebsockets.so.19)\033[0m"
+        #     read -n 1 -s -r -p "<Press any key to continue>"
+        #     printf "\n"
+        #     # wrap_ok "plugin" "$(basename $BASE/build/lib/libwebsockets.so.19)"
+        #     cp $ACME_DOMAIN/$BUILD_TYPE/plugins/libwebsockets.so.19 $HOME/.qbo/plugins/
+        # fi
+
+        # if [ -f "$ACME_DOMAIN/$BUILD_TYPE/plugins/libprotocol_qbo_ipse.so" ]; then
+        #     echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m $(basename $ACME_DOMAIN/$BUILD_TYPE/plugins/libprotocol_qbo_ipse.so)\033[0m"
+        #     read -n 1 -s -r -p "<Press any key to continue>"
+        #     printf "\n"
+        #     cp $ACME_DOMAIN/$BUILD_TYPE/plugins/libprotocol_qbo_ipse.so $HOME/.qbo/plugins/
+        # fi
+        # # END plugins
+
+    else 
+
+        # BEGIN link.json 
+        echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m link.json\033[0m"
+        if [ -z "$LINK" ]; then
+        
+            while true; do
+                wrap_user "Enter QBO LINK Service Account" ""
+                wrap_info "You should have received a QBO LINK service account from the QBO account team, or it should be available in your env file. If you haven't received it, please contact info@qbo.io for assistance."
+                echo -en "\033[1;38;5;${COLOR}m< \033[0m\033[1;38;5;${COLOR}m\033[0m"
+                while true; do
+                    # Read input line by line
+                    read -r line
+                    
+                    # Break the loop if the user presses Enter without typing anything (empty line)
+                    if [[ -z "$line" ]]; then
+                        break
+                    fi
+                    
+                    # Append the line to the DNS variable, with a newline
+                    LINK="$LINK$line"$'\n'
+                done
+
+                if is_valid_json "$LINK"; then
+                    break
+                else
+                    LINK=""  # Clear the DNS variable for the next attempt
+                fi
+            done
+
+        fi   
+        _LINK=$(echo "$LINK" | jq --arg type "service_account" '. + {type: $type, provider: "qbo"}')
+        LINK=$_LINK
+        echo $LINK | jq
+
+        read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+        printf "\n"
+
+        echo $LINK | jq > $ACME_DOMAIN/$BUILD_TYPE/link.json
+        # END link.json
+    
+    fi
+
+
+
+
+
+}
+
+function configure_json {
+
+    if [ -z "$KEY" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/key.json" ]; then
+            KEY=$(cat $ACME_DOMAIN/$BUILD_TYPE/key.json);
+        fi
+    fi
+
+    if [ -z "$REGISTRY" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/registry.json" ]; then
+            REGISTRY=$(cat $ACME_DOMAIN/$BUILD_TYPE/registry.json);
+        fi
+    fi
+
+    if [ -z "$ACME" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/acme.json" ]; then
+            ACME=$(cat $ACME_DOMAIN/$BUILD_TYPE/acme.json);
+        fi
+    fi
+
+    if [ -z "$DNS" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/dns.json" ]; then
+            DNS=$(cat $ACME_DOMAIN/$BUILD_TYPE/dns.json);
+        fi
+    fi
+
+    if [ -z "$IAM" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/iam.json" ]; then
+            IAM=$(cat $ACME_DOMAIN/$BUILD_TYPE/iam.json);
+        fi
+    fi
+
+    if [ -z "$ID_RSA_PUB" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/id_rsa.pub" ]; then
+            ID_RSA_PUB=$(cat $ACME_DOMAIN/$BUILD_TYPE/id_rsa.pub);
+        fi
+    fi
+
+    if [ -z "$ACME_LINK" ]; then
+        if [ -f "$ACME_DOMAIN/$BUILD_TYPE/link.json" ]; then
+            ACME_LINK=$(cat $ACME_DOMAIN/$BUILD_TYPE/link.json);
+            DNS_LINK=$ACME_LINK
+        fi
+    fi
+
+
+}
+
+
+
+function start {
+
+    if [ $machine = "Linux" ]; then
+        # echo "OS = $machine"
+        run_linux_tests
+    fi
+
+    if [ ! -d "$ACME_DOMAIN/$BUILD_TYPE" ]; then
+        wrap_error "$ACME_DOMAIN/$BUILD_TYPE configuration does not exist. Please run './qbo configure -C {cloud.domain.com}' to configure it."
+        exit 1
+    fi
+
+    if [ $BUILD_TYPE = "prod" ]; then
+        IMAGE=eadem/$QBO_API_BIN:$TAG
+    else
+        IMAGE=registry.qbo.io/qbo/cloud/$QBO_API_BIN:$TAG
+    fi
+
+    configure_json
+    qbo_info
+
+    if [ $CLEAN = 1 ]; then
+        echo "OPTION = CLEAN"
+
+        QBO_SHELL=$(docker ps -q --filter "label=io.qbo.shell")
+        if [ ! -z "$QBO_SHELL" ]; then
+            docker rm $QBO_SHELL -f
+        fi
+        QBO_CLUSTER=$(docker ps -q --filter "label=io.qbo.cluster")
+        if [ ! -z "$QBO_CLUSTER" ]; then
+            docker rm $QBO_CLUSTER -f
+        fi
+        QBO_INSTANCE=$(docker ps -q --filter "label=io.qbo.instance")
+        if [ ! -z "$QBO_INSTANCE" ]; then
+            docker rm $QBO_INSTANCE -f
+        fi
+        if docker ps -a --format '{{.Names}}' | grep -q '^qbo$'; then
+            docker rm qbo -f
+        fi
+        docker system prune -f
+        rm -f ~/.qbo/api.json
+        rm -f ~/.qbo/cli.json
+        rm -f $QBO_API_DB
+        rm -f $QBO_CLI_DB
+        rm -f ~/.qbo/*.conf
+        rm -f ~/.qbo/cmd.log
+        rm -f ~/.qbo/qbo.dot
+        sudo ipvsadm -C
+        sudo ipvsadm -Ln
+    fi
+
+    if [ ! -d ~/.qbo ]; then
+        mkdir -p ~/.qbo/acme/live/cloud.qbo.io/
+    fi
+
+    if [ ! -f ~/.qbo/api.json ]; then
+
+        if [ $TYPE = "link" ]; then
+
+            # ACME_LINK
+            if [ -z "$ACME_LINK" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/link.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m acme.json\033[0m"
+            echo $ACME_LINK | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # DNS_LINK
+            if [ -z "$DNS_LINK" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/link.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m dns.json\033[0m"
+            echo $DNS_LINK | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # IAM
+            if [ -z "$IAM" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/iam.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m iam.json\033[0m"
+            echo $IAM | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # REGISTRY
+            if [ -z "$REGISTRY" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/registry.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m registry.json\033[0m"
+            echo $REGISTRY | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            echo $TEMPLATE| jq --argjson iam "$IAM" --argjson dns "$DNS_LINK" --argjson acme "$ACME_LINK" --argjson registry "$REGISTRY" '
+            .vhosts[0] += {"ignore-missing-cert": "1"} |
+            .vhosts[]."ws-protocols"[] |= (
+            .["qbo-acme-client"].dns = $dns |
+            .["qbo-acme-client"].acme = $acme |
+            .["qbo"].instance.registry = $registry |
+            .["qbo"].registry = $registry |
+            .["qbo"].iam = $iam |
+            .["qbo"].dns = $dns |
+            .["qbo"].acme = $acme
+            )' | jq > ~/.qbo/api.json
+
+            cat ~/.qbo/api.json | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+        else
+            # BEGIN eadem.com
+            if [ ! -d "$HOME/.qbo/acme/live/$ACME_DOMAIN/" ]; then
+                mkdir -p $HOME/.qbo/acme/live/$ACME_DOMAIN/
+            fi
+
+            HOST_SSL_KEY=$(cat <<EOF
+{
+    "host-ssl-key": "/tmp/qbo/acme/live/$ACME_DOMAIN/privkey.pem"
+}
+EOF
+)
+
+            HOST_SSL_CERT=$(cat <<EOF
+{
+    "host-ssl-cert": "/tmp/qbo/acme/live/$ACME_DOMAIN/fullchain.pem"
+}
+EOF
+)
+
+            # END eadem.com
+
+            # KEY
+            if [ -z "$KEY" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/key.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m key.json\033[0m"
+            echo $KEY | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # ACME
+            if [ -z "$ACME" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/acme.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m acme.json\033[0m"
+            echo $ACME | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # DNS
+            if [ -z "$DNS" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/dns.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m dns.json\033[0m"
+            echo $DNS | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # IAM
+            if [ -z "$IAM" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/iam.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m iam.json\033[0m"
+            echo $IAM | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # REGISTRY
+            if [ -z "$REGISTRY" ]; then
+                wrap_error "$ACME_DOMAIN/$BUILD_TYPE/registry.json" 'not found'
+                usage
+            fi
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m registry.json\033[0m"
+            echo $REGISTRY | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+
+            # BEGIN plugins
+            if [ ! -d $HOME/.qbo/plugins ]; then
+                mkdir $HOME/.qbo/plugins
+            fi
+            
+            if [ -f "$ACME_DOMAIN/$BUILD_TYPE/plugins/libwebsockets.so.19" ]; then
+                echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m $(basename $ACME_DOMAIN/$BUILD_TYPE/plugins/libwebsockets.so.19)\033[0m"
+                read -n 1 -s -r -p "<Press any key to continue>"
+                printf "\n"
+                # wrap_ok "plugin" "$(basename $BASE/build/lib/libwebsockets.so.19)"
+                cp $ACME_DOMAIN/$BUILD_TYPE/plugins/libwebsockets.so.19 $HOME/.qbo/plugins/
+            fi
+
+            if [ -f "$ACME_DOMAIN/$BUILD_TYPE/plugins/libprotocol_qbo_ipse.so" ]; then
+                echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m $(basename $ACME_DOMAIN/$BUILD_TYPE/plugins/libprotocol_qbo_ipse.so)\033[0m"
+                read -n 1 -s -r -p "<Press any key to continue>"
+                printf "\n"
+                cp $ACME_DOMAIN/$BUILD_TYPE/plugins/libprotocol_qbo_ipse.so $HOME/.qbo/plugins/
+            fi
+            # END plugins
+
+            echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m api.json\033[0m"
+
+            echo $TEMPLATE| jq --argjson key "$KEY" --argjson iam "$IAM" --argjson dns "$DNS" --argjson acme "$ACME" --argjson host_ssl_cert "$HOST_SSL_CERT" --argjson host_ssl_key "$HOST_SSL_KEY" --argjson registry "$REGISTRY" '
+            .vhosts[0] += $host_ssl_cert |
+            .vhosts[0] += $host_ssl_key |
+            .vhosts[0] += {"ignore-missing-cert": "1"} |
+            .vhosts[]."ws-protocols"[] |= (
+            .["qbo-acme-client"].key = $key |
+            .["qbo-acme-client"].dns = $dns |
+            .["qbo-acme-client"].acme = $acme |
+            .["qbo"].instance.registry = $registry |
+            .["qbo"].registry = $registry |
+            .["qbo"].iam = $iam |
+            .["qbo"].dns = $dns |
+            .["qbo"].acme = $acme
+            )' | jq > ~/.qbo/api.json
+
+            cat ~/.qbo/api.json | jq
+            read -n 1 -s -r -p "$(echo -e '\033[1m<Press any key to continue> | <CTRL+C to exit>\033[0m')"
+            printf "\n"
+        fi
+
+
+    fi
+
+    if type getent > /dev/null 2>&1; then
+       	g=$(getent group docker | awk -F ':' '{print $3}')
+    else
+    	g=$(cat /etc/group | grep docker: | awk -F ':' '{print $3}')
+    fi
+
+    if [ $BUILD_TYPE = "prod" ]; then
+        IMAGE=eadem/$QBO_API_BIN:$TAG
+    else
+        IMAGE=registry.qbo.io/qbo/cloud/$QBO_API_BIN:$TAG
+    fi
+    (set -x; docker pull $IMAGE)
+    exit_on_error $?
+
+    if [ $DEBUG = 1 ]; then
+        (PS4="\n\033[1;33m>>>\033[0m "; set -x; docker run --rm --name qbo --ulimit nofile=65536:65536 --network host -d -it --privileged -v $HOME/.qbo/:/tmp/qbo/ -v /var/run/docker.sock:/var/run/docker.sock $IMAGE sh -c "valgrind --track-origins=yes --leak-check=full api --$LL")
+    else
+        (PS4="\n\033[1;33m>>>\033[0m "; set -x; docker run --rm --name qbo --network host -d -it --privileged -v $HOME/.qbo/:/tmp/qbo/ -v /var/run/docker.sock:/var/run/docker.sock $IMAGE api --$LL)
+    fi
+
+    exit_on_error $?
+
+    IMAGE=$(docker ps -aqf "name=qbo$")
+    echo $IMAGE > ~/.qbo/id
+    journalctl -o cat -ft $IMAGE
+
+}
+
+function stop {
+    
+    pid=`docker exec $qbo_id ps -ef | grep "[a]pi" | awk -F' ' '{print $2}'`
+    if [ ! -z "$pid" ]; then
+        docker exec $qbo_id kill -s SIGINT $pid
+    fi
+
+    docker stop $qbo_id
+    journalctl -xet $qbo_id
+}
+
+function status {
+
+    docker ps --filter="name=qbo"
+
+}
+
+function logs {
+
+    IMAGE=`docker ps -aqf "name=qbo$"`
+    if [ -z "IMAGE" ]; then
+        IMAGE=$(cat ~/.qbo/id)
+    fi
+
+    if [ $FOLLOW = 1 ]; then
+        if [ $JSON = 1 ]; then
+            # follow in json
+            journalctl -o cat -ft $IMAGE| sed -e 's/\x1b\[[0-9;]*m//g' | jq -r -R 'fromjson?'
+        else
+            # journalctl -o cat -ft $IMAGE | grep -v '{"qbo'
+            # follow all
+            journalctl -o cat -ft $IMAGE
+        fi
+    else
+        if [ $JSON = 1 ]; then
+            journalctl -o cat -t $IMAGE | sed -e 's/\x1b\[[0-9;]*m//g' | jq -r -R 'fromjson?'
+
+        else
+            if [ $EDIT = 1 ]; then
+                vim -c ":terminal journalctl -o cat -t $IMAGE" -c ":only"
+
+            else
+                # all logs
+                journalctl -o cat -t $IMAGE
+            fi
+        fi
+    fi
+
+    exit 0
+
+}
+
+if [ -z "$1" ]; then
+    usage
+fi
+
+if [ $1 = "start" ]; then
+    CMD=$@
+    shift $((OPTIND))
+    if [ -z "$1" ]; then
+        usage
+    else
+        if  [ "$1" = "api" ]; then
+            :
+        else
+            usage
+        fi
+    fi
+    shift $((OPTIND))
+
+    while getopts "cdl:r:t:T:C:" opt; do
+    case ${opt} in
+        
+        c )
+            # echo "OPTION = CLEAN"
+            CLEAN=1;
+        ;;
+        d )
+            # echo "OPTION = DEBUG"
+            DEBUG=1;
+        ;;
+        l )
+
+            if [ $OPTARG = "info" ]; then
+                LL=$OPTARG
+            elif [ $OPTARG = "debug" ]; then
+                LL=$OPTARG
+            elif [ $OPTARG = "notice" ]; then
+                LL=$OPTARG
+            elif [ $OPTARG = "user" ]; then
+                LL=$OPTARG
+            fi
+
+        ;;
+        r )
+            if [ $OPTARG = "stage" ]; then
+                BUILD_TYPE=$OPTARG
+            elif [ $OPTARG = "prod" ]; then
+                BUILD_TYPE=$OPTARG
+            else
+                usage
+            fi
+
+        ;;
+        t )
+            if [ $OPTARG = "origin" ]; then
+                TYPE=$OPTARG
+                QBO_VERSION=$BUILD_TYPE.$(git rev-parse --short HEAD)
+            elif [ $OPTARG = "link" ]; then
+                TYPE=$OPTARG
+            else
+                usage
+            fi
+        ;;
+	    T )
+            echo "-- tag"
+            TAG=$OPTARG;
+        ;;
+        C )
+            ACME_DOMAIN=$OPTARG
+        ;;
+        \? )
+		echo "Invalid option: $OPTARG" 1>&2
+		usage
+        ;;
+    esac
+    done
+    if ! validate_domain "$ACME_DOMAIN"; then
+	wrap_error "'-C' option missing"
+	usage
+    fi
+    start
+elif [ $1 = "attach" ]; then
+    CMD=$@
+    if [ -z "$2" ]; then
+        usage
+    else
+        if  [[ ! "terminal" =~ "$2".* ]]; then
+          usage
+        fi
+    fi
+
+    docker attach qbo
+elif [ $1 = "logs" ]; then
+    CMD=$@
+    if [ -z "$2" ]; then
+            usage
+    else
+        if  [ ! $2 = "api" ]; then
+            usage
+        fi
+    fi
+
+    shift $((OPTIND))
+    shift $((OPTIND))
+
+    while getopts "fej" opt; do
+    case ${opt} in
+        f )
+            FOLLOW=1;
+        ;;
+        j )
+            JSON=1;
+        ;;
+        e )
+            EDIT=1;
+        ;;
+        \? )
+		echo "Invalid option: $OPTARG" 1>&2
+		usage
+        ;;
+    esac
+    done
+    logs
+elif [ $1 = "test" ]; then
+    CMD=$@
+    shift $((OPTIND))
+    if [ -z "$1" ]; then
+        echo $1
+        usage
+    else
+        if  [ "$1" = "host" ]; then
+            :
+        else
+            usage
+        fi
+    fi
+    shift $((OPTIND))
+    test
+elif [ "$1" = "configure" ]; then
+    CMD=$@
+    shift $((OPTIND))
+    if [ -z "$1" ]; then
+        usage
+    else
+        if  [ "$1" = "host" ]; then
+            TARGET=$1
+        elif  [ "$1" = "api" ]; then
+            TARGET=$1
+        else
+            usage
+        fi
+    fi
+    shift $((OPTIND))
+
+    if [ $TARGET = "host" ]; then 
+        while getopts "auphUmevidRxsIC:t:r:c" opt; do
+        case ${opt} in
+            a ) # all
+                _ALL=1
+            ;;
+            u ) # update
+                _UPDATE=1
+            ;;
+            p ) # apparmor
+                _APPARMOR=1
+            ;;
+            h ) # hostname
+                _HOSTNAME=1
+            ;;
+            U ) # user
+                _USER=1
+            ;;
+            m ) # motd
+                _MOTD=1
+            ;;
+            e ) # vim
+                _VIM=1
+                if ! id qbo &>/dev/null; then
+                    _USER=1
+                fi
+            ;;
+            v ) # ipvsadm
+                _IPVSADM=1
+            ;;
+            i ) # iptables
+                _IPTABLES=1
+            ;;
+            d ) # docker
+                _DOCKER=1
+            ;;
+            R ) # registry
+                _REGISTRY=1
+            ;;
+            x ) # nvidia
+                _NVIDIA=1
+            ;;
+            s ) # ssh
+                _SSH=1
+                if ! id qbo &>/dev/null; then
+                    _USER=1
+                fi
+            ;;
+            I) # pull
+                _IMAGE=1
+            ;;
+            C)
+                ACME_DOMAIN=$OPTARG
+            ;;
+            t )
+                if [ $OPTARG = "origin" ]; then
+                    TYPE=$OPTARG
+                    QBO_VERSION=$BUILD_TYPE.$(git rev-parse --short HEAD)
+                elif [ $OPTARG = "link" ]; then
+                    TYPE=$OPTARG
+                else
+                    usage
+                fi
+            ;;
+            r)
+                if [ $OPTARG = "stage" ]; then
+                    BUILD_TYPE=$OPTARG
+                elif [ $OPTARG = "prod" ]; then
+                    BUILD_TYPE=$OPTARG
+                else
+                    usage
+                fi
+            ;;
+            c)
+                CLEAN=1
+            ;;
+            \? )
+            echo "Invalid option: $OPTARG" 1>&2
+            usage
+            ;;
+        esac
+        done
+    else
+        while getopts "C:t:r:c" opt; do
+        case ${opt} in
+            C)
+                ACME_DOMAIN=$OPTARG
+            ;;
+            t )
+                if [ $OPTARG = "origin" ]; then
+                    TYPE=$OPTARG
+                    QBO_VERSION=$BUILD_TYPE.$(git rev-parse --short HEAD)
+                elif [ $OPTARG = "link" ]; then
+                    TYPE=$OPTARG
+                else
+                    usage
+                fi
+            ;;
+            r)
+                if [ $OPTARG = "stage" ]; then
+                    BUILD_TYPE=$OPTARG
+                elif [ $OPTARG = "prod" ]; then
+                    BUILD_TYPE=$OPTARG
+                else
+                    usage
+                fi
+            ;;
+            c)
+                CLEAN=1
+            ;;
+            \? )
+            echo "Invalid option: $OPTARG" 1>&2
+            usage
+            ;;
+        esac
+        done
+    fi 
+    
+    if ! validate_domain "$ACME_DOMAIN"; then
+        wrap_error "-C { domain } option required"
+        exit 1
+    fi
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m $ACME_DOMAIN\033[0m"
+    configure
+elif [ $1 = "stop" ]; then
+    CMD=$@
+    if [ -z "$2" ]; then
+       usage
+    else
+        if  [ ! "$2" = "api" ]; then
+            usage
+        fi
+    fi
+    qbo_id=`docker ps -aqf "name=qbo$"`
+
+    if [ -z "$qbo_id" ]; then
+        echo "qbo $QBO_API_BIN not running."
+	exit 0
+    fi
+    echo -e "\033[1;38;5;${COLOR}m>>>\033[0m\033[1;38;5;${COLOR}m $ACME_DOMAIN\033[0m"
+    stop
+else
+    REPO=eadem
+    $REPO/cli:latest
+    docker pull $IMAGE
+
+    docker run --rm --name qbo-cli -e CLI_LOG=$CLI_LOG -e QBO_HOST=$QBO_HOST -e QBO_PORT=$QBO_PORT -e QBO_UID=$QBO_UID -e QBO_AUX=$QBO_AUX --network host -i -v ~/.qbo:/tmp/qbo $REPO/cli:latest cli $@ | jq
+
+fi

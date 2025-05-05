@@ -48,9 +48,9 @@
     }
     .before-div-height h2 {
       cursor: pointer;
-      margin-bottom: 0;
-      margin-top: 2px;
-      font-size: 23px;
+      margin-bottom: 0 !important;
+      margin-top: 2px !important;
+      font-size: 23px !important;
   }
     .after-div-height {
       height: 132px;
@@ -115,7 +115,9 @@
     font-size: 14px;
 }
       .befor-after-main-div h2 {
-    font-size: 11px;
+          font-size: 11px;
+          font-size: 11px !important;
+          margin-top: 5px !important;
       }
       .before-div-height {
           height: 50px;

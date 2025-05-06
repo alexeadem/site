@@ -1,7 +1,8 @@
-platform: /platform/
+# platform: /platform/
 technology: /technology/
-solutions: /solutions/
-resources: /resources/
+# solutions: /solutions/
+documentation: /docs/
+demos: /demos/
 news: /news/
-about: /about/
+# about: /about/
 #themes: /themes/

@@ -7,8 +7,8 @@ menu:
   blogs: Blogs
   demos: Demos
   about: About
-  resources: Resources
-  solutions: Solutions
+  documentation: Documentation
+  # solutions: Solutions
   search: Search
 
 index:
@@ -30,7 +30,7 @@ page:
   next: Next
   last_updated: "Last updated: %s"
 
-sidebar:
+sidebar:    
   docs:
     getting_started: Getting Started
     overview: Overview
@@ -45,12 +45,28 @@ sidebar:
     platform: Platform
     demos: Demos
     collection: Collection
-    # qbot: QBOT
-    # nvidia: NVIDIA GPU Operator
-    # kubeflow: Kubeflow
-    # nginx: NGINX Ingress Controller
-    # istio: Istio
-    # storage: Persistent Storage
+    interface: Interface
+    web: WEB
+    cli: CLI
+    api: API
+    conformance: CNCF Conformance
+    sonobuoy: Sonobuoy
+    glossary: Glossary
+    def: Definitions
+  index:
+    getting_started: Getting Started
+    overview: Overview
+    installation: Installation
+    ce: Community Edition
+    cloud: Cloud Edition
+    asyncapi: AsyncAPI Specification
+    qce: Container Engine
+    qke: Kubernetes Engine
+    qce_qs: Quick Start
+    qke_qs: Quick Start
+    platform: Platform
+    demos: Demos
+    collection: Collection
     interface: Interface
     web: WEB
     cli: CLI

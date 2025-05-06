@@ -19,6 +19,7 @@ pretty_urls:
 
 theme: navy
 
+
 highlight:
   enable: true
   line_number: false

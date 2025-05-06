@@ -18,6 +18,27 @@ docs:
     sonobuoy: sonobuoy.html
   glossary:
     def: def.html
+index:
+  getting_started:
+    overview: index.html
+    installation: docs/installation.html
+  api: 
+    ce: docs/ce.html
+    cloud: docs/cloud.html
+    asyncapi: https://spec.qbo.io/
+  qce:
+    qce_qs: docs/qce.html
+  qke:
+    qke_qs: docs/qke.html
+  interface:
+    web: docs/web.html
+    cli: docs/cli.html
+    api: docs/api.html
+  conformance:
+    sonobuoy: docs/sonobuoy.html
+  glossary:
+    def: docs/def.html
+
 #resources:
 #  docs: 
 #    collection: /docs/

@@ -8,7 +8,7 @@ const lunr = require('lunr');
 const moment = require('moment'); // Hexo includes Moment.js by default
 const full_url_for = hexo.extend.helper.get('full_url_for').bind(hexo);
 
-const localizedPath = ['docs', 'api'];
+const localizedPath = ['docs', 'api', ];
 
 hexo.extend.helper.register('page_nav', function() {
   const type = this.page.canonical_path.split('/')[0];
@@ -39,7 +39,14 @@ hexo.extend.helper.register('page_nav', function() {
 });
 
 hexo.extend.helper.register('doc_sidebar', function(className) {
-  const type = this.page.canonical_path.split('/')[0];
+  // Normalize type to use 'index' for root or index.html
+  let type = this.page.canonical_path.split('/')[0];
+  if (!type || type === 'index.html') {
+    type = 'index';
+  }
+
+  // console.log("type = " + type);
+
   const sidebar = this.site.data.sidebar[type];
   const path = basename(this.path);
   let result = '';
@@ -63,6 +70,7 @@ hexo.extend.helper.register('doc_sidebar', function(className) {
 
   return result;
 });
+
 
 hexo.extend.helper.register('header_menu', function(className) {
   const menu = this.site.data.menu;

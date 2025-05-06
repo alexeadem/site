@@ -38,6 +38,6 @@ algolia:
     index_name: qbo
 twitter: qbo_cloud
 youtube: qbo-cloud
-github: alexeadem/qbo-ce
+github: alexeadem/site
 linkedin: company/qbo-cloud
 slack : archives/C05733LJ22Z

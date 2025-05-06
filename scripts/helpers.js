@@ -121,7 +121,13 @@ hexo.extend.helper.register('local_link', function(path) {
   return false;
 });
 
-hexo.extend.helper.register('raw_link', path => `https://github.com/alexeadem/site/edit/master/source/${path}`);
+// hexo.extend.helper.register('raw_link', path => `https://github.com/alexeadem/site/edit/main/source/${path}`);
+
+hexo.extend.helper.register('raw_link', path => {
+  // Rewrite symlinked homepage path to its actual source path in GitHub
+  const rewrittenPath = (path === 'index.md') ? 'docs/index.md' : path;
+  return `https://github.com/alexeadem/site/edit/main/source/${rewrittenPath}`;
+});
 
 hexo.extend.helper.register('page_anchor', str => {
   const $ = cheerio.load(str, {decodeEntities: false});

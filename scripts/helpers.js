@@ -8,7 +8,7 @@ const lunr = require('lunr');
 const moment = require('moment'); // Hexo includes Moment.js by default
 const full_url_for = hexo.extend.helper.get('full_url_for').bind(hexo);
 
-const localizedPath = ['docs', 'api', ];
+const localizedPath = ['docs', 'api'];
 
 hexo.extend.helper.register('page_nav', function() {
   const type = this.page.canonical_path.split('/')[0];

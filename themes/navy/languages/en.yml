@@ -1,15 +1,13 @@
 menu:
   docs: Docs
-  api: API
+  # api: API
   news: News
   technology: Technology
-  platform: Platform
-  blogs: Blogs
+  # platform: Platform
+  # blogs: Blogs
   demos: Demos
-  about: About
   documentation: Documentation
-  # solutions: Solutions
-  search: Search
+  # search: Search
 
 index:
   get_started: Get started

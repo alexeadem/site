@@ -503,7 +503,7 @@ html[data-theme="light"] .befor-after-main-div .before-impact span.dot {
   background-color: #444444;
 }
 html[data-theme="light"]  .after-div-height {
-  height: 96px;
+  height: 101px;
 }
 html[data-theme="light"] .after-impact {
   color: #444444;
@@ -516,14 +516,14 @@ html[data-theme="light"] .after-impact span.dot-left {
 }
 
 html[data-theme="light"] .before-div-height {
-  height: 80px;
+  height: 87px;
 }
 
 html[data-theme="dark"]  .after-div-height {
-  height: 96px;
+  height: 101px;
 }
 html[data-theme="dark"] .before-div-height {
-  height: 80px;
+  height: 87px;
 }
 
 @media (min-width: 200px) and (max-width: 500px){

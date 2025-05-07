@@ -4,7 +4,7 @@ title: Technology
 
 ## <i class='bx bxl-docker' ></i> Pure Containers
 
-### VMs VS Containers
+### Virtual Machines vs Containers within Containers
 
 In traditional VM environments, kubernetes-based applications must go through multiple layers before they access bare metal resources (OS layer and hypervisor layer). This not only adds complexities to a setup, but causes significant performance impacts that can actually prohibit some applications (e.g. resource intensive ones that access GPUs, Disk I/O, CPU and RAM) from ever being moved to kubernetes in the first place.
 
@@ -16,15 +16,14 @@ Docker containers do not require booting a separate OS instance like VMs. Instea
 
 In summary, Docker offers performance comparable to running processes directly on the OS, while also providing the benefits of their efficient isolation mechanisms in compute instances and kubernetes.
 
+
 <!-- {% preview "vms_vs_containers.svg" %} -->
 {% raw %}
 <div class="technology-main-div">
 <main>
   <div class="virtual-mac-header">
-    <h1>Virtual Machines vs Containers within Containers</h1>
     <p>Architectural Differences and Performance Impact</p>
   </div>
-
   <div class="befor-after-main-div">
     <div class="before-impact">
 
@@ -33,7 +32,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line"/>
           <span class="dot"></span>
         </div>
-        <h2 class="div-height">Application Software</h2>
+        <b class="div-height">Application Software</b>
       </div>
 
       <div class="before-div-height os-block" data-type="OS">
@@ -41,7 +40,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot"></span>
         </div>
-        <h2 class="div-height">OS</h2>
+        <b class="div-height">OS</b>
       </div>
 
       <div class="before-div-height hypervisor-block" data-type="Hypervisor">
@@ -49,7 +48,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot"></span>
         </div>
-        <h2 class="div-height">Hypervisor</h2>
+        <b class="div-height">Hypervisor</b>
       </div>
 
       <div class="before-div-height os-scnd-block" data-type="OS">
@@ -57,7 +56,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot"></span>
         </div>
-        <h2 class="div-height">OS</h2>
+        <b class="div-height">OS</b>
       </div>
 
       <div class="before-div-height Bare-block" data-type="Bare Metal">
@@ -65,7 +64,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot"></span>
         </div>
-        <h2 class="div-height">Bare Metal</h2>
+        <b class="div-height">Bare Metal</b>
         <span>GPU</span><br>
         <span>CPU</span><br>
         <span>Memory</span><br>
@@ -88,7 +87,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot-left"></span>
         </div>
-        <h2 class="div-height">Application Software</h2>
+        <b class="div-height">Application Software</b>
       </div>
 
       <div class="after-div-height r-os-block" data-type="OS">
@@ -96,7 +95,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot-left"></span>
         </div>
-        <h2 class="div-height">OS</h2>
+        <b class="div-height">OS</b>
       </div>
 
       <div class="after-div-height last-Bare-block" data-type="Bare Metal">
@@ -104,7 +103,7 @@ In summary, Docker offers performance comparable to running processes directly o
           <hr class="custom-line">
           <span class="dot-left"></span>
         </div>
-        <h2 class="div-height">Bare Metal</h2>
+        <b class="div-height">Bare Metal</b>
         <span>GPU</span><br>
         <span>CPU</span><br>
         <span>Memory</span><br>
@@ -115,8 +114,8 @@ In summary, Docker offers performance comparable to running processes directly o
   </div>
 
   <div class="footer-content">
-    <h2>BEFORE</h2>
-    <h2>AFTER</h2>
+    <b>BEFORE</b>
+    <b>AFTER</b>
   </div>
 </main>
 </div>
@@ -186,6 +185,8 @@ In summary, Docker offers performance comparable to running processes directly o
   });
 </script>
 {% endraw %}
+
+
 ## <i class='bx bx-cloud'></i> AsyncAPI
 
 QBO AsyncAPI transforms metal into a cloud-native computing platform. It operates on Linux-based commodity servers, overseeing Kubernetes-in-Docker (KinD) deployments within the QBO Kubernetes Engine (QKE).

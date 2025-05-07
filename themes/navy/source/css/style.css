@@ -2,7 +2,7 @@
     .technology-main-div {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
+      padding-bottom: 2rem;
       line-height: 1.6;
       display: flex;
       justify-content: center;
@@ -12,9 +12,9 @@
     .technology-main-div a.article-anchor {
       display: none !important;
   }
-  .article-content .technology-main-div h2{
+  /* .article-content .technology-main-div{
     border-bottom:0px;
-  }
+  } */
     /* main {
       padding: 1rem;
     } */

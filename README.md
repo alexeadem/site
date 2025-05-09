@@ -38,6 +38,9 @@ cd -
 rsync -a  public/ ../public/
 ```
 
+# Staging
+docs.levitas.dev
+
 ## Contributors
 
 - English - [alexeadem](https://github.com/alexeadem)

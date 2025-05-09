@@ -99,7 +99,7 @@
   }
   .os-block {
     position: relative;
-    top: 29px;
+    top: 20px;
 }
     @media (max-width: 767px) {
       .footer-content {
@@ -279,7 +279,6 @@
 }
 .horizontal-line-with-dot {
   position: relative;
-  margin-bottom: 10px;
 }
 .hypervisor-block {
   position: relative;
@@ -287,18 +286,11 @@
 }
 .os-scnd-block {
   position: relative;
-    top: 40px;
-}
-.last-Bare-block {
-  top: 14px;
-  position: relative;
-}
-html[data-theme=light] .Bare-block span {
-  color: rgb(68, 68, 68)!important;
+  top: 44px;
 }
 .Bare-block {
   position: relative;
-  top: 28px;
+  top: 31px;
 }
 
 @font-face {

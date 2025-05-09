@@ -361,7 +361,7 @@ html[data-theme=light] .Bare-block span {
 .section-1 {
   padding: 80px 15px;
   /* background: rgb(23, 31, 38); */
-  height: 100vh;
+  /* height: 100vh; */
 }
 .images img.show {
   display: block;

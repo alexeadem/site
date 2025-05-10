@@ -4,122 +4,94 @@ title: NVIDIA GPU Operator
 
 <!-- <img src="/demos/images/nvidia.svg" width="100"> -->
 
-> AI & ML
-
 NVIDIA GPU Operator plays a crucial role in enabling organizations to harness the power of NVIDIA GPUs for AI and machine learning workloads in Kubernetes environments, leading to faster innovation, improved model performance, and greater efficiency in AI deployments.
 
-QBO Kubernetes Engine (QKE) offers unparalleled performance for any ML and AI workloads, bypassing the constraints of traditional virtual machines. By deploying Kubernetes components using Docker-in-Docker technology, it grants direct access to hardware resources. This approach delivers the agility of the cloud while maintaining optimal performance.
+QBO provides the ideal runtime environment for the NVIDIA GPU Operator by delivering bare-metal GPU access, container-native orchestration, and automated infrastructure provisioning—without virtualization overhead. By running Kubernetes-in-Docker (KinD), QBO enables the GPU Operator to fully utilize NVIDIA GPUs with high density and low latency, whether deployed on-premises, in the cloud, or in secure, air-gapped environments. This makes QBO a powerful foundation for scalable, GPU-accelerated AI infrastructure.
 
-[![QKE + NVIDIA GPU Operator + Kubernetes-in-Docker + Cgroups v2 - Part 1](https://i.ytimg.com/vi/nl7sWLsuDOI/hqdefault.jpg)](https://youtu.be/nl7sWLsuDOI)
+{% youtube nl7sWLsuDOI %}
 
-## Prerequsites
+## Prerequisites
 
-| Dependency                                                                                                              | Validated or Included Version(s)                                                                                                                          | Notes |
-| ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| [Kubernetes](https://kubernetes.io/docs/home/)                                                                          | [v1.25.11](https://github.com/kubernetes/kubernetes/tree/release-1.25)                                                                                    |       |
-| [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) | [v1.14.3](https://github.com/NVIDIA/nvidia-container-toolkit/releases/tag/v1.14.3)                                                                        |       |
-| [NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/index.html)                   | [v23.9.1](https://github.com/NVIDIA/gpu-operator/releases/tag/v23.9.1)                                                                                    |       |
-| NVIDIA Driver                                                                                                           | [535.129.03](https://www.nvidia.com/download/driverResults.aspx/213194/en-us/) [546.01](https://www.nvidia.com/download/driverResults.aspx/216365/en-us/) |       |
-| [NVIDIA CUDA](https://docs.nvidia.com/cuda/)                                                                            | [12.2](https://developer.nvidia.com/cuda-12-2-0-download-archive)                                                                                         |       |
-| OS                                                                                                                      | Linux, Windows 10, 11 (WSL2)                                                                                                                              |       |
+| Dependency    | Version Included / Validated                                       | Notes           |
+| ------------- | ------------------------------------------------------------------ | --------------- |
+| Kubernetes    | [v1.32.3](https://github.com/kubernetes/kubernetes/tree/v1.32.3)   |                 |
+| GPU Operator  | [v25.3.0](https://github.com/NVIDIA/gpu-operator/tree/v25.3.0)     |                 |
+| QBO API       | [v1.5.14](http://docs.qbo.io/news/2025/05/08/api-1-5-14-released/) | Current release |
+| NVIDIA Driver | 550.78                                                             |                 |
+| CUDA Version  | 12.8                                                               |                 |
 
-## QBOT
+## Single Command Install
 
-### [Install](qbot)
-
-### Run
+### [QBOT](qbot)
 
 ```bash
-./qbot gpu-operator
+./qbot 
 ```
 
-## Deploy
+## Step-by-Step Installation
 
-#### Kubernetes Cluster
-
-> For this tutorial we are using `nvidia` as our cluster name
-
-```bash
-export NAME=nvidia
-```
-
-> Get qbo version to make sure we have access to qbo API
+### 1. Create Kubernetes Cluster
 
 ```bash
 qbo version | jq .version[]?
-```
-
-> Add a K8s cluster with image v1.25.11. See [Kubeflow compatibility](ai_and_ml?id=kubeflow)
-
-```bash
-qbo add cluster $NAME -i hub.docker.com/kindest/node:v1.25.11 | jq
-```
-
-> Get nodes information using qbo API
-
-```bash
-qbo get nodes $NAME | jq .nodes[]?
-```
-
-> Configure kubectl
-
-```bash
-export KUBECONFIG=$HOME/.qbo/$NAME.cfg
-```
-
-> Get nodes with kubectl
-
-```bash
+qbo add cluster nvidia_gpu_operator -i hub.docker.com/kindest/node:v1.32.3 | jq
+qbo get nodes nvidia_gpu_operator | jq .nodes[]?
+qbo get cluster nvidia_gpu_operator -k | jq -r '.output[]?.kubeconfig | select( . != null)' > /home/alex/.qbo/nvidia_gpu_operator.conf
+export KUBECONFIG=/home/alex/.qbo/nvidia_gpu_operator.conf
 kubectl get nodes
 ```
 
-#### Nvidia GPU Operator
-
-> Helm Chart
+### 2. Install NVIDIA GPU Operator
 
 ```bash
 helm repo add nvidia https://helm.ngc.nvidia.com/nvidia || true
 helm repo update
-helm install --wait --generate-name -n gpu-operator --create-namespace nvidia/gpu-operator --set driver.enabled=false
-
+helm search repo gpu-operator
+helm install --wait --generate-name -n gpu-operator --create-namespace nvidia/gpu-operator --set driver.enabled=false --set dcgmExporter.enabled=false
+helm list -n gpu-operator
 ```
 
-### Configure
-
-#### Windows
-
-> WSL2
-
-###### PCI Labels
+### 3. Deploy DCGM Exporter
 
 ```bash
-for i in $(kubectl get no --selector '!node-role.kubernetes.io/control-plane' -o json | jq -r '.items[].metadata.name'); do
-        kubectl label node $i feature.node.kubernetes.io/pci-10de.present=true
-done
+cat <<EOF > dcgm.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: gpu-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app: nvidia-dcgm-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9400"
+    spec:
+      containers:
+      - name: exporter
+        image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
+        ports:
+        - containerPort: 9400
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+              - SYS_ADMIN
+EOF
+
+kubectl apply -f dcgm.yaml
 ```
 
-###### Chart Templates
+### 4. Run CUDA Sample
 
 ```bash
-git clone https://github.com/alexeadem/qbot
-cd qbot/gpu-operator
-OUT=templates
-kubectl apply -f $OUT/gpu-operator/crds.yaml
-kubectl apply -f $OUT/gpu-operator/templates/
-kubectl apply -f $OUT/gpu-operator/charts/node-feature-discovery/templates/
-watch kubectl get pods
-
-```
-
-#### Vector Addition
-
-##### Deploy
-
-```
-cat cuda/vectoradd.yaml
-```
-
-```yaml
+cat <<EOF > cuda/vectoradd.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -127,24 +99,19 @@ metadata:
 spec:
   restartPolicy: OnFailure
   containers:
-    - name: cuda-vectoradd
-      image: "nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubuntu20.04"
-      resources:
-        limits:
-          nvidia.com/gpu: 1
-```
+  - name: cuda-vectoradd
+    image: "nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda11.7.1-ubuntu20.04"
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+EOF
 
-```bash
 kubectl apply -f cuda/vectoradd.yaml
-```
-
-##### Test
-
-```bash
 kubectl logs cuda-vectoradd
 ```
 
-```
+Expected output:
+```text
 [Vector addition of 50000 elements]
 Copy input data from the host memory to the CUDA device
 CUDA kernel launch with 196 blocks of 256 threads

@@ -1,6 +1,10 @@
 ---
-title: ArgoCD on QBO - Future-Proofing CI/CD with QBO & ArgoCD
+title: ArgoCD
 ---
+
+## Future-Proofing CI/CD with QBO & ArgoCD
+
+{% preview "argocd.svg" %}
 
 In today's rapidly evolving cloud-native landscape, flexibility and scalability are non-negotiable. **ArgoCD**, a declarative GitOps continuous delivery tool, is a game-changer for Kubernetes. But when combined with **QBO**, an innovative Kubernetes platform that bridges the gap between on-prem, private, and public cloud environments—including air-gapped deployments—it becomes a powerhouse for modern CI/CD workflows.
 

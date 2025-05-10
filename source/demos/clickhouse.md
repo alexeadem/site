@@ -1,6 +1,11 @@
 ---
-title: Supercharge ClickHouse Deployment on QBO
+title: ClickHouse
 ---
+
+
+## Supercharge ClickHouse Deployment on QBO
+
+{% preview "clickhouse.svg" %}
 
 <!-- <img src="/demos/images/clickhouse.svg" width="100"> -->
 

@@ -1,8 +1,12 @@
 ---
-title: NVIDIA GPU Operator
+title: NVIDIA GPU Operator on QBO GPU Cloud
 ---
 
 <!-- <img src="/demos/images/nvidia.svg" width="100"> -->
+
+## Deploy NVIDIA GPU Operator on QBO Kubernetes Engine (QKE)
+
+{% preview "nvidia.svg" %}
 
 NVIDIA GPU Operator plays a crucial role in enabling organizations to harness the power of NVIDIA GPUs for AI and machine learning workloads in Kubernetes environments, leading to faster innovation, improved model performance, and greater efficiency in AI deployments.
 

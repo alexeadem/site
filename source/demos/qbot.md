@@ -4,6 +4,8 @@ title: Demos
 
 ## QBO Demo Runner (`qbot`)
 
+{% preview "qbot.svg" %}
+
 QBO provides a demo repository containing ready-to-run examples that can be deployed directly into your QBO environment. These demos are executed using an interactive typing bot named `qbot`.
 
 When you launch `qbot`, it will type out each command as if you were entering it manually—executing real commands in real time. This makes it easy to follow along and understand the steps involved, while safely automating the setup of each demo.

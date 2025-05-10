@@ -1,6 +1,10 @@
 ---
-title: Running GitLab on QBO - A High-Performance, Portable Solution
+title: GitLab
 ---
+
+## Running GitLab on QBO - A High-Performance, Portable Solution
+
+{% preview "gitlab.svg" %}
 
 ## Overview
 

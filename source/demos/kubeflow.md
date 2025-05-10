@@ -1,14 +1,19 @@
 ---
-title: Kubeflow
+title: Kubeflow on QBO GPU Cloud
 ---
 
+## The Machine Learning Toolkit running on QBO Kubernetes Engine (QKE)
+
 <!-- <img src="/demos/images/kubeflow.svg" width="100"> -->
+
+{% preview "kubeflow.svg" %}
+
 
 Kubeflow plays a crucial role in democratizing AI by providing a unified, open-source platform that enables organizations to efficiently develop, deploy, and manage AI applications at scale. It abstracts the complexity of the machine learning lifecycle — from data processing to model serving — within a Kubernetes-native environment, making advanced AI workflows more accessible to teams of all sizes.
 
 QBO complements this by democratizing the cloud itself. It gives organizations full control over their infrastructure — whether on-premises, in the cloud, or at the edge — with bare-metal GPU performance, simplified orchestration, and dramatically lower cost. By running Kubernetes-in-Docker (KinD) instead of relying on traditional virtualization, QBO eliminates overhead, enabling Kubeflow to launch faster, run more efficiently, and scale further — all without the complexity of hyperscalers.
 
-{% youtube nl7sWLsuDOI %}
+{% youtube nl7sWLsuDOI %}</div>
 
 ## Prerequisites
 

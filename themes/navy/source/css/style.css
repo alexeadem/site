@@ -578,3 +578,18 @@ html[data-theme="dark"] .before-div-height {
 html[data-theme=dark] .Bare-block span {
   color: rgb(220, 214, 207)!important;
 }
+.before-div-height:hover {
+    transform: scale(1.1);
+    cursor: pointer;
+}
+.after-div-height:hover {
+    transform: scale(1.1);
+    cursor: pointer;
+}
+.before-div-height {
+    transition: 0.6s;
+}
+.after-div-height {
+    transition: 0.6s;
+}
+ 

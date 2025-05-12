@@ -2,23 +2,47 @@
 title: Demos
 ---
 
-## QBOT
+## QBO Demo Runner (`qbot`)
 
-> QBO provides a demo repository with demos that can be deployed in qbo for testing purposes. The demos are deployed using a typing bot. All that is required is to start the bot and tap enter to continue. You'll see all the commands that will be executed as qbot is typing them. Keep in mind that the commands are not simulated but real commands that are just typed for you. The bot's name is `qbot`
+{% preview "qbot.svg" %}
 
-### Install
+QBO provides a demo repository containing ready-to-run examples that can be deployed directly into your QBO environment. These demos are executed using an interactive typing bot named `qbot`.
+
+When you launch `qbot`, it will type out each command as if you were entering it manually—executing real commands in real time. This makes it easy to follow along and understand the steps involved, while safely automating the setup of each demo.
+
+---
+
+### Installation
+
+Clone the demo repository and navigate into it:
 
 ```bash
 git clone https://github.com/alexeadem/qbot
 cd qbot
 ```
 
-### Run
+---
+
+### Running a Demo
+
+To start the qbot run:
 
 ```bash
 ./qbot
 ```
 
-```output
->>> ./qbot {istio | nginx | kubeconfig | nvidia | kubeflow}                 -- Demo to run
-```
+Just press `Enter` to proceed through each step as `qbot` types out the commands for you.
+
+---
+
+### Available Demos
+
+- `istio` — Deploy Istio Service Mesh
+- `nginx` — Deploy a sample NGINX workload
+- `kubeconfig` — Set up and manage kubeconfig access
+- `nvidia` — Deploy NVIDIA GPU Operator
+- `kubeflow` — Deploy the Kubeflow AI/ML platform
+
+---
+
+> All commands executed by `qbot` are real—nothing is simulated. You can stop at any time and inspect each command before it runs.

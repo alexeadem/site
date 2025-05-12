@@ -1,127 +1,175 @@
 ---
-title: Kubeflow
+title: Kubeflow on QBO GPU Cloud
 ---
+
+## The Machine Learning Toolkit running on QBO Kubernetes Engine (QKE)
 
 <!-- <img src="/demos/images/kubeflow.svg" width="100"> -->
 
-##
+{% preview "kubeflow.svg" %}
 
-Kubeflow plays a crucial role in democratizing AI by providing a unified platform that enables organizations to efficiently develop, deploy, and manage AI applications at scale.
 
-QBO Kubernetes Engine (QKE) offers unparalleled performance for any ML and AI workloads, bypassing the constraints of traditional virtual machines. By deploying Kubernetes components using Docker-in-Docker technology, it grants direct access to hardware resources. This approach delivers the agility of the cloud while maintaining optimal performance.
+Kubeflow plays a crucial role in democratizing AI by providing a unified, open-source platform that enables organizations to efficiently develop, deploy, and manage AI applications at scale. It abstracts the complexity of the machine learning lifecycle — from data processing to model serving — within a Kubernetes-native environment, making advanced AI workflows more accessible to teams of all sizes.
 
-{% youtube nl7sWLsuDOI %}
+QBO complements this by democratizing the cloud itself. It gives organizations full control over their infrastructure — whether on-premises, in the cloud, or at the edge — with bare-metal GPU performance, simplified orchestration, and dramatically lower cost. By running Kubernetes-in-Docker (KinD) instead of relying on traditional virtualization, QBO eliminates overhead, enabling Kubeflow to launch faster, run more efficiently, and scale further — all without the complexity of hyperscalers.
 
-> The following instructions use the upstream Kubeflow project with `platform-agnostic-multi-user-pns` pipelines.
+{% youtube nl7sWLsuDOI %}</div>
 
 ## Prerequisites
 
-> Kubeflow v1.7.0 with Nvidia GPU support
+| Dependency   | Version Included / Validated                                                 | Notes           |
+| ------------ | ---------------------------------------------------------------------------- | --------------- |
+| Kubernetes   | [v1.32.3](https://github.com/kubernetes/kubernetes/tree/v1.32.3)             |                 |
+| Kubeflow     | [v1.10.0](https://www.kubeflow.org/docs/releases/kubeflow-1.10/)             |                 |
+| GPU Operator | [v25.3.0](https://github.com/NVIDIA/gpu-operator/tree/v25.3.0)               |                 |
+| QBO API      | [v1.5.14](http://docs.qbo.io/news/2025/05/08/api-1-5-14-released/)           | Current release |
+| Kustomize    | [v5.6.0](https://github.com/kubernetes-sigs/kustomize/tree/kustomize/v5.6.0) |                 |
 
-| Dependency                                                           | Validated or Included Version(s) | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| -------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Kubernetes](https://github.com/kubernetes/kubernetes/tree/v1.25.11) | v1.25.11                         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| [Kubeflow](https://www.kubeflow.org/docs/releases/kubeflow-1.7/)     | v1.7.0                           | The autoscaling/v2beta2 API version of HorizontalPodAutoscaler is no longer served as of v1.26.Migrate manifests and API clients to use the autoscaling/v2 API version, available since v1.23. All existing persisted objects are accessible via the new API v1.25 [HorizontalPodAutoscaler not found on minikube when installing kubeflow](https://stackoverflow.com/questions/76502195/horizontalpodautoscaler-not-found-on-minikube-when-installing-kubeflow) |
-| OS                                                                   | Linux, Windows 10, 11 (WSL2)     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+## Single Command Install
 
-> Kubeflow v1.8.0 with Nvidia GPU support
-
-| Dependency                                                           | Validated or Included Version(s) | Notes                                                                                    |
-| -------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| [Kubernetes](https://github.com/kubernetes/kubernetes/tree/v1.25.11) | v1.25.11                         |                                                                                          |
-| [Kubeflow](https://www.kubeflow.org/docs/releases/kubeflow-1.8/)     | v1.8.0                           | [GPU Vendor not available error #7273](https://github.com/kubeflow/kubeflow/issues/7273) |
-| OS                                                                   | Linux, Windows 10, 11 (WSL2)     |                                                                                          |
-
-## QBOT
-
-### [Install](qbot)
-
-### Run
+### [QBOT](qbot)
 
 ```bash
-./qbot kubeflow help
-Usage:
-./qbot kubeflow {v1.7.0 | v1.8.0}
+./qbot 
 ```
 
-## Install
+> The following Kubeflow versions are supported for installation with qbot:
 
-### [Nvidia GPU Operator](ai_and_ml?id=nvidia-gpu-operator)
+- `v1.7.0`
+- `v1.8.0`
+- `v1.9.0-rc.0`
+- `v1.9.0-rc.2`
+- `v1.10.0-rc.2`
+- `v1.10.0`
 
-### Kubeflow
+## Step-by-Step Installation    
+
+### 1. Create Kubernetes Cluster
+
+```bash
+qbo version | jq .version[]?
+qbo add cluster kubeflow_v1_10_0_nvidia 
+qbo add cluster kubeflow_v1_10_0_nvidia -i hub.docker.com/kindest/node:v1.32.3 | jq
+qbo get nodes kubeflow_v1_10_0_nvidia | jq .nodes[]?
+qbo get cluster kubeflow_v1_10_0_nvidia -k | jq -r '.output[]?.kubeconfig | select( . != null)' > /home/alex/.qbo/kubeflow_v1_10_0_nvidia.conf
+export KUBECONFIG=/home/alex/.qbo/kubeflow_v1_10_0_nvidia.conf
+kubectl get nodes
+```
+
+### 2. Install [NVIDIA GPU Operator](nvidia)
+
+(Refer to QBO GPU documentation or use `qbot gpu install` if applicable.)
+
+### 3. Install Kubeflow
 
 ```bash
 cd $HOME
 git clone https://github.com/kubeflow/manifests.git
 cd manifests/
-```
-
-```bash
-export KUBEFLOW_VERSION=v1.7.0
-```
-
-> `export KUBEFLOW_VERSION=v1.8.0` for version v1.8.0
-
-```bash
-git checkout $KUBEFLOW_VERSION
+git fetch --all
+git checkout v1.10.0
 curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
-while ! ./kustomize build example | kubectl apply -f -; do echo "Retrying to apply resources"; sleep 10; done
 ```
 
-## Configure
-
-### Kubeflow
-
-### Patch Deployment
-
-> Once this finishes we also need to patch the Kubeflow Pipelines service to not use Docker, otherwise our pipelines will get stuck and report Docker socket errors. This happens because despite us using Docker the Docker docket isn’t made available inside the kind cluster. So from Kubeflow’s perspective we are using containerd directly instead of Docker.
+Apply the manifests:
 
 ```bash
-./kustomize build apps/pipeline/upstream/env/platform-agnostic-multi-user-pns | kubectl apply -f -
-watch kubectl get pods -A
+while ! ./kustomize build example | kubectl apply --server-side --force-conflicts -f -; do echo "Retrying to apply resources"; sleep 20; done
+
+./kustomize build apps/pipeline/upstream/env/platform-agnostic-multi-user | kubectl apply -f -
 ```
 
-## Access
-
-> Port forward
+### 4. Configure Istio Ingress Gateway
 
 ```bash
-kubectl port-forward svc/istio-ingressgateway -n istio-system 8080:80
-
+kubectl patch svc istio-ingressgateway --type='json' -p '[{"op":"replace","path":"/spec/type","value":"LoadBalancer"}]' -n istio-system
 ```
 
-#### Linux
-
-> You can then open your browser and navigate to http://127.0.0.1:8080 and login with the default credentials
-
-#### Windows
-
-> (WSL2)
-
-> Under Windows Subsystem for Linux (WSL) you can install Google Chrome to access the product page
+Extract TLS certs:
 
 ```bash
-wget -O $HOME/google-chrome-stable_current_amd64.deb https://dl.>google.com/linux/direct/google-chrome-stable_current_amd64.deb
-sudo apt install $HOME/google-chrome-stable_current_amd64.deb
+kubectl get secret kubeflow-ingressgateway-certs -n istio-system -o jsonpath="{.data.tls\.crt}" | base64 -d
+kubectl get secret kubeflow-ingressgateway-certs -n istio-system -o jsonpath="{.data.tls\.key}" | base64 -d
 ```
 
+Apply RBAC and Gateway config:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: istio-ingressgateway-sds
+  namespace: istio-system
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: istio-ingressgateway-sds
+  namespace: istio-system
+subjects:
+- kind: ServiceAccount
+  name: istio-ingressgateway-service-account
+  namespace: istio-system
+roleRef:
+  kind: Role
+  name: istio-ingressgateway-sds
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: kubeflow-gateway
+  namespace: kubeflow
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: kubeflow-ingressgateway-certs
+    hosts:
+    - "*"
+EOF
 ```
-wsl.exe -e google-chrome http://127.0.0.1:8080
+
+### 5. Final Steps
+
+```bash
+kubectl apply -f gateway.yaml
 ```
 
-#### Kubeflow UI
+If `htpasswd` is not found:
 
-> Default Credentials
->
-> username: `user@example.com`
->
-> password: `12341234`
+```bash
+sudo apt install apache2-utils
+```
 
-<!-- ![kubeflow nvidia-smi](img/kubeflow_nvidia_smi.png) -->
+Restart Dex and patch password secret:
 
-### Related Content
+```bash
+secret/dex-passwords patched
+deployment.apps/dex restarted
+```
 
-[Unlocking AI & ML Metal Performance with QBO Kubernetes Engine (QKE) Part I - Deploying Nvidia GPU Operator](/blogs/nvidia_kubeflow_1)
-[Unlocking AI & ML Metal Performance with QBO Kubernetes Engine (QKE) Part II - Deploying Kubeflow](/blogs/nvidia_kubeflow_2)
+## Access Your Kubeflow Dashboard
 
-[Running Kubeflow inside Kind with GPU support](https://jacobtomlinson.dev/posts/2022/running-kubeflow-inside-kind-with-gpu-support/)
+- **URL:** https://kubeflow.cloud.eadem.com  
+- **Username:** `user@example.com`  
+- **Password:** `20a67a9c-0a0d-11f0-b8a6-3e4691a9b80b`
+
+> Open your browser and navigate to the URL above to log in with the default credentials.

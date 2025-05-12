@@ -2,14 +2,19 @@
 title: Persistent Storage
 ---
 
-## Let's Encrypt Certs Demo
+## Persistent Volume Example: Let's Encrypt Certs Demo
 
-#### Local Path Provisioner
+This example demonstrates how to use persistent storage with the Local Path Provisioner in a Kubernetes deployment. The configuration shows a workload (locus-ws) that uses a persistent volume to store Let's Encrypt certificates under /tmp/locus/acme.
 
-> Persistent volume example
+---
+
+### Deployment YAML
+
+The following Kubernetes Deployment mounts two volumes:
+- A read-only ConfigMap for configuration files
+- A writable PersistentVolumeClaim for storing certs
 
 ```yaml
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,11 +32,9 @@ spec:
       containers:
         - name: locus-ws
           image: registry.eadem.com/alex/locus-cloud/locus-ws:latest
-          # command: ["/usr/bin/ws", "-l", "info"]
           volumeMounts:
             - name: etc-ws
               mountPath: "/etc/ws/"
-              # subPath: "api.json"
               readOnly: true
             - name: volume
               mountPath: /tmp/locus/acme
@@ -55,14 +58,18 @@ spec:
             claimName: locus-ws-pvc
 ```
 
-```yaml
 ---
+
+### Persistent Volume Claim (PVC)
+
+This PVC requests 2Gi of storage using the standard storage class and supports ReadWriteOnce access mode.
+
+```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: locus-ws-pvc
   labels:
-    # insert any desired labels to identify your claim
     app: locus-ws-pvc
 spec:
   storageClassName: standard
@@ -70,6 +77,13 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      # The amount of the volume's storage to request
       storage: 2Gi
 ```
+
+---
+
+### Notes
+
+- The volumeMounts section ensures Let's Encrypt data persists even if the pod is restarted.
+- This configuration is compatible with QBO's local path provisioner or any CSI-compliant storage backend.
+- Ensure the standard StorageClass is available in your cluster, or replace it with your provisioner's class.

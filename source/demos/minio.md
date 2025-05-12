@@ -1,6 +1,10 @@
 ---
-title: MinIO on QBO - Deploying High-Performance Object Storage
+title: MinIO 
 ---
+
+## MinIO on QBO - Deploying High-Performance Object Storage
+
+{% preview "minio.svg" %}
 
 ## **Introduction**
 

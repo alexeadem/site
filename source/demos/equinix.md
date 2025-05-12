@@ -2,9 +2,11 @@
 title: Equinix
 ---
 
-Equinix Metal is Equinix's dedicated cloud offering that integrates compute, networking, and storage options in a bare-metal, single-tenant, on-demand server offering.
+## Turn Equinix into a GPU cloud platform with QBO
 
-QBO delivers unparalleled performance for ML/AI workloads, I/O-intensive databases, and real-time applications by bypassing the constraints of traditional virtual machines. By deploying Kubernetes components and compute instances using pure container technology—without virtualization—it provides direct access to hardware resources. This approach can be utilized on Equinix Metal machines to deliver the agility of the cloud while maintaining optimal performance.
+{% preview "equinix.svg" %}
+
+QBO delivers unparalleled performance for ML/AI workloads, I/O-intensive databases, and real-time applications by bypassing the constraints of traditional virtual machines. By deploying Kubernetes components and compute instances using pure container technology—without virtualization—it provides direct access to hardware resources. This approach can be utilized on Equinix machines to deliver the agility of the cloud while maintaining optimal performance.
 
 | Prerequisities           | Notes                                                                                                                                                                 |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -441,7 +443,7 @@ At this point, you should have a fully configured Equinix server with QBO. To ge
 
 #### Add Elastic IPs
 
-Equinix Metal provides you the ability to assign [Elastic IP addresses](https://deploy.equinix.com/developers/docs/metal/networking/elastic-ips/) statically to your servers through the console and API.
+Equinix provides you the ability to assign [Elastic IP addresses](https://deploy.equinix.com/developers/docs/metal/networking/elastic-ips/) statically to your servers through the console and API.
 
 {% preview "Screenshot from 2024-09-17 19-43-58.png" %}
 

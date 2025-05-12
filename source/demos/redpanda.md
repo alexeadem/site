@@ -1,6 +1,10 @@
 ---
-title: Simplified Redpanda Deployment on QBO for High-Performance Streaming
+title: Redpanda
 ---
+
+## Simplified Redpanda Deployment on QBO for High-Performance Streaming
+
+{% preview "redpanda.svg" %}
 
 <!-- <img src="/demos/images/redpanda.svg" width="100"> -->
 

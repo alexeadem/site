@@ -580,9 +580,15 @@ html[data-theme=dark] .Bare-block span {
 }
 
 #mainImage {
-    transition: transform 0.6s ease-in-out;
+    transition: transform 0.7s ease-in-out;
 }
 #mainImage.zoom-in {
-    transform: scale(1.03);
+    transform: scale(1.1);
+}
+.before-impact, .after-impact {
+    line-height: 1.7 !important;
+}
+.before-div-height, .after-div-height {
+    cursor: pointer;
 }
  

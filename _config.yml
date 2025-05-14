@@ -32,9 +32,9 @@ algolia:
     # qbo
     # api_key: bbe81ac1c2e13720b761072d2a6dc19e
     # index_name: qbo
-    application_id: 22V4SOJ92L
+    application_id: 31D7YAGUC2
     # hexo
-    api_key: dc1de3f4577eb710e8376da031402195
+    api_key: 49457c0a257b9504f874081120a03e6e
     index_name: qbo
 twitter: qbo_cloud
 youtube: qbo-cloud

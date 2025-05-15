@@ -16,7 +16,7 @@
   // document.getElementById('lang-select').addEventListener('change', changeLang);
   document.getElementById('mobile-lang-select').addEventListener('change', changeLang);
   document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('figure.highlight.bash, figure.highlight.plaintext').forEach((figure) => {
+  document.querySelectorAll('figure.highlight.bash, figure.highlight.plaintext, figure.highlight.json').forEach((figure) => {
     const codeBlock = figure.querySelector('td.code');
     if (!codeBlock) return;
 

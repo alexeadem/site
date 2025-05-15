@@ -702,3 +702,13 @@ html[data-theme=dark] .after-div-height, html[data-theme=light] .after-div-heigh
     height: 75px;
 }
 }
+.copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #fff;
+}

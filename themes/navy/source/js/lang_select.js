@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const button = document.createElement('button');
     button.className = 'copy-button';
     //button.innerHTML = '📋<i class="bxr bx-copy" />';
-    button.innerHTML = '<img src="/images/copy-white.png" alt="Copy" style="width:16px;height:16px;">';
+    button.innerHTML = '<i class="bxr bx-copy" style="color:#fff;font-family:boxicons;" />';
 
 
     // Style position
@@ -46,8 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
     button.addEventListener('click', () => {
       const lines = Array.from(codeBlock.querySelectorAll('.line')).map(line => line.innerText).join('\n');
       navigator.clipboard.writeText(lines).then(() => {
-        button.innerHTML = '<img src="/images/copy-blue.png" alt="Copy" style="width:16px;height:16px;">';
-        setTimeout(() => button.innerHTML = '<img src="/images/copy-white.png" alt="Copy" style="width:16px;height:16px;">', 2000);
+        button.innerHTML = '<i class="bxr bx-copy" style="color:#60b0f4;font-family:boxicons;" />';
+        setTimeout(() => button.innerHTML = '<i class="bxr bx-copy" style="color:#fff;font-family:boxicons;" />', 2000);
       });
     });
   });

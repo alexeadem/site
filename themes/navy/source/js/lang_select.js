@@ -13,9 +13,10 @@
     location.href = path + canonical;
   }
 
-  // document.getElementById('lang-select').addEventListener('change', changeLang);
+  document.getElementById('lang-select').addEventListener('change', changeLang);
   document.getElementById('mobile-lang-select').addEventListener('change', changeLang);
-  document.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('figure.highlight.bash, figure.highlight.plaintext, figure.highlight.json').forEach((figure) => {
     const codeBlock = figure.querySelector('td.code');
     if (!codeBlock) return;
@@ -24,7 +25,7 @@
     const button = document.createElement('button');
     button.className = 'copy-button';
     //button.innerHTML = '📋<i class="bxr bx-copy" />';
-    button.innerHTML = '<img src="/images/copy.png" alt="Copy" style="width:16px;height:16px;">';
+    button.innerHTML = '<img src="/images/copy-white.png" alt="Copy" style="width:16px;height:16px;">';
 
 
     // Style position
@@ -45,10 +46,12 @@
     button.addEventListener('click', () => {
       const lines = Array.from(codeBlock.querySelectorAll('.line')).map(line => line.innerText).join('\n');
       navigator.clipboard.writeText(lines).then(() => {
-        button.innerHTML = '✅';
-        setTimeout(() => button.innerHTML = '<img src="/images/copy.png" alt="Copy" style="width:16px;height:16px;">', 2000);
+        button.innerHTML = '<img src="/images/copy-blue.png" alt="Copy" style="width:16px;height:16px;">';
+        setTimeout(() => button.innerHTML = '<img src="/images/copy-white.png" alt="Copy" style="width:16px;height:16px;">', 2000);
       });
     });
   });
 });
+
+
 }());

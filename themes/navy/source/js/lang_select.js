@@ -13,8 +13,8 @@
     location.href = path + canonical;
   }
 
-  document.getElementById('lang-select').addEventListener('change', changeLang);
-  document.getElementById('mobile-lang-select').addEventListener('change', changeLang);
+  // document.getElementById('lang-select').addEventListener('change', changeLang);
+  // document.getElementById('mobile-lang-select').addEventListener('change', changeLang);
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('figure.highlight.bash, figure.highlight.plaintext, figure.highlight.json').forEach((figure) => {

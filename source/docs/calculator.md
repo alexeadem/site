@@ -296,7 +296,7 @@ This calculator translates your claimed vCPU and RAM allocations in a shared clo
 {% endraw %}
 
 
-## **QBO vs VM-Based Infrastructure Summary**
+## **VM-Based Infrastructure vs QBO Summary**
 
 This document compares QBO on metal with VM-based infrastructure (such as EKS, EC2, or other cloud VMs) across four key operational areas: node draining, autoscaling, spot instance behavior, and container vs VM scaling.
 

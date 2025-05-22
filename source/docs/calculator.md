@@ -1,5 +1,5 @@
 ---
-title: QBO Metal Node Calculator
+title: Metal Compute Calculator	
 ---
 
 ## Calculator

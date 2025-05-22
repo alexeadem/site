@@ -2,7 +2,7 @@
 title: Overview
 ---
 
-### What is&nbsp;[qbo](glossary?id=-qbo-pronounced-letter-q-bow-as-in-bow-tie)?
+### What is&nbsp;[qbo](def#Glossary)
 
 QBO is an AsyncAPI designed to streamline the deployment of [Kind](https://kind.sigs.k8s.io/) images using Docker containers as Kubernetes nodes. It empowers users to effortlessly deploy, manage, and scale containerized applications using Kubernetes, eliminating the need for intricate infrastructure management. With Kubernetes Engine (QKE), users can unlock the full potential of [metal performance](https://en.wikipedia.org/wiki/Bare-metal_server), particularly beneficial for compute-intensive workloads demanding high performance and minimal latency, such as databases and AI/ML models.
 

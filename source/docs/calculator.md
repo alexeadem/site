@@ -2,6 +2,15 @@
 title: QBO Metal Node Calculator
 ---
 
+## Calculator
+
+  
+Cloud environments like AWS EKS operate on shared infrastructure. When you're told you have 2426 vCPUs, you aren't guaranteed full access to those resources all the time. Due to noisy neighbors, overcommit, and shared tenancy, sustained usage is often far lower (30–50%). Likewise, RAM allocations are not always 100% available or consistent.
+
+In contrast, QBO metal nodes are fully dedicated, meaning compute and memory availability is stable and predictable. Additionally, because metal eliminates hypervisor overhead, workloads are 20–30% more efficient, needing fewer total cores to achieve the same performance.
+
+This calculator translates your claimed vCPU and RAM allocations in a shared cloud environment into the equivalent number of dedicated QBO metal nodes. It accounts for actual usage, efficiency gains on bare metal, and the capacity of your chosen hardware to provide a realistic comparison.
+
 {% raw %}
 <div id="qbo-calculator">
   <style>
@@ -148,13 +157,6 @@ title: QBO Metal Node Calculator
 
   <div id="qbo-result"></div>
 
-  <h2>Explanation</h2>
-  <p>
-    Cloud environments like AWS EKS operate on <strong>shared infrastructure</strong>. When you're told you have 2426 vCPUs, you aren't guaranteed full access to those resources all the time. Due to noisy neighbors, overcommit, and shared tenancy, <strong>sustained usage</strong> is often far lower (30–50%). Likewise, RAM allocations are not always 100% available or consistent.
-  </p>
-  <p>
-    In contrast, <strong>QBO metal nodes are fully dedicated</strong>, meaning compute and memory availability is stable and predictable. Additionally, because metal eliminates hypervisor overhead, workloads are <strong>20–30% more efficient</strong>, needing fewer total cores to achieve the same performance.
-  </p>
 
   <h2>Example Comparison: Cloud vs Metal Over Time</h2>
   <table>
@@ -292,3 +294,22 @@ title: QBO Metal Node Calculator
 </div>
 
 {% endraw %}
+
+
+## **QBO vs VM-Based Infrastructure Summary**
+
+This document compares QBO on metal with VM-based infrastructure (such as EKS, EC2, or other cloud VMs) across four key operational areas: node draining, autoscaling, spot instance behavior, and container vs VM scaling.
+
+| Aspect | VM-Based Infrastructure (e.g., EKS, EC2) | QBO on Metal |
+| :---- | :---- | :---- |
+| Node Draining | Can happen unexpectedly due to AWS maintenance or scaling. | You control it. No surprise evictions or reboots. |
+| Autoscaling | Scales VMs (EC2/Fargate) which takes 1–3+ minutes. | Scales containers instantly on existing metal. |
+| Spot Interruptions | Spot VMs can be interrupted with 2 minutes’ notice. | No spot concept. Your metal is reserved and dedicated. |
+| Scaling Target | Scales virtual machines, then schedules containers. | Scales containers (processes) directly on Linux. |
+| Latency to Scale | 60–180+ seconds — VMs must boot and join the cluster. | Milliseconds to seconds — containers on demand. |
+| Overhead | High — VMs add resource overhead and complexity. | Minimal — no hypervisor, no nested OS. |
+| Predictability | Shared environment — susceptible to external events. | Deterministic behavior — you fully control lifecycle. |
+| Efficiency | Virtualized, shared CPU/RAM with hypervisor overhead. | Direct use of hardware resources. |
+| Cost Consistency | VMs billed by the minute/hour, can spike with autoscale. | Flat cost per metal node — no surprise billing. |
+| Best For | General-purpose cloud-native workloads with elasticity. | AI/ML, low-latency workloads, GPU-heavy apps, HPC. |
+

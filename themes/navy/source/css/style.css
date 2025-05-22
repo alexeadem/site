@@ -600,8 +600,8 @@ html[data-theme="dark"] #qbo-calculator input {
 }
 
 html[data-theme="dark"] #qbo-calculator input:disabled {
-  background-color: #444;
-  color: #aaa; /* slightly darker than white */
+  background-color: #111;
+  color: #6e6d6d; /* slightly darker than white */
   border: 1px solid #444;
 }
 

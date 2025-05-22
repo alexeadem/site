@@ -71,15 +71,27 @@ title: QBO Metal Node Calculator
       vertical-align: middle;
     }
 
-#qbo-calculator input[type="number"] {
-  -moz-appearance: textfield; /* Firefox */
-}
+    #qbo-calculator input[type="number"] {
+      -moz-appearance: textfield; /* Firefox */
+    }
 
-#qbo-calculator input[type="number"]::-webkit-inner-spin-button,
-#qbo-calculator input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;  /* Chrome, Safari, Edge */
-  margin: 0;
-}
+    #qbo-calculator input[type="number"]::-webkit-inner-spin-button,
+    #qbo-calculator input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;  /* Chrome, Safari, Edge */
+      margin: 0;
+    }
+
+    #qbo-graph-wrapper {
+      width: 100%;
+      max-width: 700px;
+      overflow-x: auto;
+    }
+
+    #qbo-graph {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
 }
 
   </style>
@@ -158,7 +170,9 @@ title: QBO Metal Node Calculator
     <div class="qbo-legend-box" style="background-color: green;"></div> QBO Metal (stable CPU)
   </div>
 
-  <canvas id="qbo-graph" width="700" height="240" style="margin-top: 20px; border: 1px solid #ccc;"></canvas>
+<div id="qbo-graph-wrapper" style="margin-top: 20px; border: 1px solid #ccc;">
+  <canvas id="qbo-graph"></canvas>
+</div>
 
   <script>
     function qboCalculate() {
@@ -198,6 +212,13 @@ title: QBO Metal Node Calculator
     function drawCanvas(avgCPUUtilPercent) {
       const canvas = document.getElementById('qbo-graph');
       const ctx = canvas.getContext('2d');
+
+      // Make the canvas responsive
+      const width = canvas.clientWidth;
+      const height = 240;
+      canvas.width = width;
+      canvas.height = height;
+
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
       const bgColor = isDark ? '#000' : '#fff';
@@ -207,47 +228,58 @@ title: QBO Metal Node Calculator
       const qboLineColor = 'green';
 
       ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, width, height);
+
+      // Axes
+      const leftPadding = 50;
+      const bottomPadding = 20;
+      const rightEdge = width - 10;
+      const bottomEdge = height - bottomPadding;
 
       ctx.beginPath();
-      ctx.moveTo(50, 20);
-      ctx.lineTo(50, 220);
-      ctx.lineTo(690, 220);
+      ctx.moveTo(leftPadding, 20);
+      ctx.lineTo(leftPadding, bottomEdge);
+      ctx.lineTo(rightEdge, bottomEdge);
       ctx.strokeStyle = axisColor;
       ctx.stroke();
 
+      // Y-axis labels
       ctx.fillStyle = textColor;
       ctx.font = '12px sans-serif';
       for (let i = 0; i <= 100; i += 20) {
-        const y = 220 - (i * 2);
+        const y = bottomEdge - (i * 2);
         ctx.fillText(i + "%", 10, y + 4);
         ctx.beginPath();
-        ctx.moveTo(45, y);
-        ctx.lineTo(50, y);
+        ctx.moveTo(leftPadding - 5, y);
+        ctx.lineTo(leftPadding, y);
         ctx.strokeStyle = axisColor;
         ctx.stroke();
       }
 
-      ctx.fillText("Time →", 640, 235);
-      ctx.fillText("CPU Availability (%)", 260, 15);
+      // X-axis labels
+      ctx.fillText("Time →", width - 60, height - 5);
+      ctx.fillText("CPU Availability (%)", width / 2 - 60, 15);
 
+      // EKS fluctuating line (dashed)
       ctx.beginPath();
       ctx.setLineDash([5, 5]);
-      ctx.moveTo(50, 220 - (avgCPUUtilPercent + Math.random() * 5) * 2);
-      for (let x = 60; x <= 680; x += 10) {
+      ctx.moveTo(leftPadding, bottomEdge - (avgCPUUtilPercent + Math.random() * 5) * 2);
+      for (let x = leftPadding + 10; x <= rightEdge; x += 10) {
         const usage = avgCPUUtilPercent + Math.sin(x / 20) * 10 + (Math.random() * 5 - 2.5);
-        ctx.lineTo(x, 220 - usage * 2);
+        ctx.lineTo(x, bottomEdge - usage * 2);
       }
       ctx.strokeStyle = eksLineColor;
       ctx.stroke();
 
+      // QBO stable line (solid)
       ctx.setLineDash([]);
       ctx.beginPath();
-      ctx.moveTo(50, 20);
-      ctx.lineTo(680, 20);
+      ctx.moveTo(leftPadding, 20); // constant line at 100%
+      ctx.lineTo(rightEdge, 20);
       ctx.strokeStyle = qboLineColor;
       ctx.stroke();
     }
+
 
     // Redraw canvas when theme changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

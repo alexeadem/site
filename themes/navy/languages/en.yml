@@ -51,6 +51,7 @@ sidebar:
     sonobuoy: Sonobuoy
     glossary: Glossary
     def: Definitions
+    calc: Calculator
   index:
     getting_started: Getting Started
     overview: Overview
@@ -73,6 +74,7 @@ sidebar:
     sonobuoy: Sonobuoy
     glossary: Glossary
     def: Definitions
+    calc: Calculator
   # resources:
   #   blogs: Blogs
   #   demos: Demos

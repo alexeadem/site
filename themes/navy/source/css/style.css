@@ -594,6 +594,18 @@ html[data-theme="dark"] .before-div-height {
   height: 87px;
 }
 
+html[data-theme="dark"] #qbo-calculator input {
+  color: white;
+  background: black;
+}
+
+html[data-theme="dark"] #qbo-calculator input:disabled {
+  background-color: #444;
+  color: #aaa; /* slightly darker than white */
+  border: 1px solid #444;
+}
+
+
 @media (min-width: 200px) and (max-width: 500px){
   html[data-theme="light"] .before-div-height {
       height: 43px !important;
@@ -712,3 +724,4 @@ html[data-theme=dark] .after-div-height, html[data-theme=light] .after-div-heigh
   font-size: 16px;
   color: #fff;
 }
+

@@ -18,6 +18,7 @@ docs:
     sonobuoy: sonobuoy.html
   glossary:
     def: def.html
+    calc: calculator.html
 index:
   getting_started:
     overview: index.html
@@ -38,6 +39,7 @@ index:
     sonobuoy: docs/sonobuoy.html
   glossary:
     def: docs/def.html
+    calc: docs/calculator.html
 
 #resources:
 #  docs: 
